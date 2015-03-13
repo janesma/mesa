@@ -349,6 +349,9 @@ intelInitExtensions(struct gl_context *ctx)
       ctx->Extensions.ARB_post_depth_coverage = true;
    }
 
+   if (brw->gen >= 6 && brw->gen <= 7)
+      ctx->Extensions.INTEL_performance_query = true;
+
    if (ctx->API == API_OPENGL_CORE)
       ctx->Extensions.ARB_base_instance = true;
    if (ctx->API != API_OPENGL_CORE)
