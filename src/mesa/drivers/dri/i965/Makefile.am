@@ -164,8 +164,9 @@ BUILT_SOURCES = \
 	brw_oa_hsw.c
 
 brw_oa_hsw.h brw_oa_hsw.c: brw_oa_hsw.xml brw_oa.py Makefile
-       $(PYTHON2) $(PYTHON_FLAGS) $(srcdir)/brw_oa.py \
-          --header=$(builddir)/brw_oa_hsw.h \
-          --code=$(builddir)/brw_oa_hsw.c \
-          --chipset="hsw" \
-          $(srcdir)/brw_oa_hsw.xml
+	$(PYTHON2) $(PYTHON_FLAGS) $(srcdir)/brw_oa.py \
+	   --header=$(builddir)/brw_oa_hsw.h \
+	   --code=$(builddir)/brw_oa_hsw.c \
+	   --chipset="hsw" \
+	   $(srcdir)/brw_oa_hsw.xml
+
