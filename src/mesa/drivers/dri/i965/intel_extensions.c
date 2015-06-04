@@ -295,7 +295,7 @@ intelInitExtensions(struct gl_context *ctx)
       ctx->Extensions.ARB_shader_stencil_export = true;
    }
 
-   if (brw->gen >= 6 && brw->gen <= 7)
+   if (brw->gen >= 6 && brw->gen <= 9)
       ctx->Extensions.INTEL_performance_query = true;
 
    if (ctx->API == API_OPENGL_CORE)
