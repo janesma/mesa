@@ -47,6 +47,10 @@ brw_nir_trig_workarounds.c: brw_nir_trig_workarounds.py $(top_srcdir)/src/compil
 	$(MKDIR_GEN)
 	$(AM_V_GEN) PYTHONPATH=$(top_srcdir)/src/compiler/nir $(PYTHON2) $(PYTHON_FLAGS) $(srcdir)/brw_nir_trig_workarounds.py > $@ || ($(RM) $@; false)
 
+EXTRA_DIST = \
+	brw_oa_hsw.xml \
+	brw_oa.py
+
 noinst_LTLIBRARIES = libi965_dri.la libi965_compiler.la
 libi965_dri_la_SOURCES = $(i965_FILES)
 libi965_dri_la_LIBADD = \
@@ -123,3 +127,15 @@ test_eu_compact_SOURCES = \
 	test_eu_compact.c
 nodist_EXTRA_test_eu_compact_SOURCES = dummy.cpp
 test_eu_compact_LDADD = $(TEST_LIBS)
+
+
+BUILT_SOURCES = \
+	brw_oa_hsw.h \
+	brw_oa_hsw.c
+
+brw_oa_hsw.h brw_oa_hsw.c: brw_oa_hsw.xml brw_oa.py Makefile
+       $(PYTHON2) $(PYTHON_FLAGS) $(srcdir)/brw_oa.py \
+          --header=$(builddir)/brw_oa_hsw.h \
+          --code=$(builddir)/brw_oa_hsw.c \
+          --chipset="hsw" \
+          $(srcdir)/brw_oa_hsw.xml
