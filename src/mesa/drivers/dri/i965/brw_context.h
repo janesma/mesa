@@ -1188,6 +1188,19 @@ struct brw_context
    } predicate;
 
    struct {
+      /* Variables referenced in the XML meta data for OA performance
+       * counters, e.g in the normalization equations.
+       *
+       * All uint64_t for consistent operand types in generated code */
+      struct {
+         uint64_t timestamp_frequency; /** $GpuTimestampFrequency */
+         uint64_t n_eus;               /** $EuCoresTotalCount */
+         uint64_t n_eu_slices;         /** $EuSlicesTotalCount */
+         uint64_t eu_threads_count;    /** $EuThreadsCount */
+         uint64_t subslice_mask;       /** $SliceMask */
+         uint64_t slice_mask;          /** $SubsliceMask */
+      } sys_vars;
+
       struct brw_perf_query queries[MAX_PERF_QUERIES];
       int n_queries;
 
