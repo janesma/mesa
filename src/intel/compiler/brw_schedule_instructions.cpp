@@ -800,9 +800,7 @@ schedule_node::schedule_node(backend_instruction *inst,
    /* We can't measure Gen6 timings directly but expect them to be much
     * closer to Gen7 than Gen4.
     */
-   if (!sched->post_reg_alloc)
-      this->latency = 1;
-   else if (devinfo->gen >= 6)
+   if (devinfo->gen >= 6)
       set_latency_gen7(devinfo->is_haswell);
    else
       set_latency_gen4();
