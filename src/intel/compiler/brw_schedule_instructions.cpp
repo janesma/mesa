@@ -76,12 +76,6 @@ public:
    int latency;
 
    /**
-    * Which iteration of pushing groups of children onto the candidates list
-    * this node was a part of.
-    */
-   unsigned cand_generation;
-
-   /**
     * This is the sum of the instruction's latency plus the maximum delay of
     * its children, or just the issue_time if it's a leaf node.
     */
@@ -793,7 +787,6 @@ schedule_node::schedule_node(backend_instruction *inst,
    this->child_count = 0;
    this->parent_count = 0;
    this->unblocked_time = 0;
-   this->cand_generation = 0;
    this->delay = 0;
    this->exit = NULL;
 
@@ -1435,8 +1428,6 @@ fs_instruction_scheduler::choose_instruction_to_schedule(int time)
        * latency.
        */
       foreach_in_list(schedule_node, n, &instructions) {
-         fs_inst *inst = (fs_inst *)n->inst;
-
          if (!chosen) {
             chosen = n;
             continue;
@@ -1459,50 +1450,11 @@ fs_instruction_scheduler::choose_instruction_to_schedule(int time)
             continue;
          }
 
-         if (mode == SCHEDULE_PRE_LIFO) {
-            /* Prefer instructions that recently became available for
-             * scheduling.  These are the things that are most likely to
-             * (eventually) make a variable dead and reduce register pressure.
-             * Typical register pressure estimates don't work for us because
-             * most of our pressure comes from texturing, where no single
-             * instruction to schedule will make a vec4 value dead.
-             */
-            if (n->cand_generation > chosen->cand_generation) {
-               chosen = n;
-               continue;
-            } else if (n->cand_generation < chosen->cand_generation) {
-               continue;
-            }
-
-            /* On MRF-using chips, prefer non-SEND instructions.  If we don't
-             * do this, then because we prefer instructions that just became
-             * candidates, we'll end up in a pattern of scheduling a SEND,
-             * then the MRFs for the next SEND, then the next SEND, then the
-             * MRFs, etc., without ever consuming the results of a send.
-             */
-            if (v->devinfo->gen < 7) {
-               fs_inst *chosen_inst = (fs_inst *)chosen->inst;
-
-               /* We use size_written > 4 * exec_size as our test for the kind
-                * of send instruction to avoid -- only sends generate many
-                * regs, and a single-result send is probably actually reducing
-                * register pressure.
-                */
-               if (inst->size_written <= 4 * inst->exec_size &&
-                   chosen_inst->size_written > 4 * chosen_inst->exec_size) {
-                  chosen = n;
-                  continue;
-               } else if (inst->size_written > chosen_inst->size_written) {
-                  continue;
-               }
-            }
-         }
-
-         /* For instructions pushed on the cands list at the same time, prefer
-          * the one with the highest delay to the end of the program.  This is
-          * most likely to have its values able to be consumed first (such as
-          * for a large tree of lowered ubo loads, which appear reversed in
-          * the instruction stream with respect to when they can be consumed).
+         /* For instructions with the same benefit, prefer the one with the
+          * highest delay to the end of the program.  This is most likely to
+          * have its values able to be consumed first (such as for a large
+          * tree of lowered ubo loads, which appear reversed in the
+          * instruction stream with respect to when they can be consumed).
           */
          if (n->delay > chosen->delay) {
             chosen = n;
@@ -1582,7 +1534,6 @@ instruction_scheduler::schedule_instructions(bblock_t *block)
          n->remove();
    }
 
-   unsigned cand_generation = 1;
    while (!instructions.is_empty()) {
       schedule_node *chosen = choose_instruction_to_schedule(time);
 
@@ -1634,7 +1585,6 @@ instruction_scheduler::schedule_instructions(bblock_t *block)
             bs->dump_instruction(child->inst);
          }
 
-         child->cand_generation = cand_generation;
          child->parent_count--;
          if (child->parent_count == 0) {
             if (debug) {
@@ -1643,7 +1593,6 @@ instruction_scheduler::schedule_instructions(bblock_t *block)
             instructions.push_head(child);
          }
       }
-      cand_generation++;
 
       /* Shared resource: the mathbox.  There's one mathbox per EU on Gen6+
        * but it's more limited pre-gen6, so if we send something off to it then

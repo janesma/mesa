@@ -6290,13 +6290,11 @@ fs_visitor::allocate_registers(unsigned min_dispatch_width, bool allow_spilling)
    static const enum instruction_scheduler_mode pre_modes[] = {
       SCHEDULE_PRE,
       SCHEDULE_PRE_NON_LIFO,
-      SCHEDULE_PRE_LIFO,
    };
 
    static const char *scheduler_mode_name[] = {
       "top-down",
       "non-lifo",
-      "lifo"
    };
 
    bool spill_all = allow_spilling && (INTEL_DEBUG & DEBUG_SPILL_FS);
