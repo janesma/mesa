@@ -424,6 +424,7 @@ class instruction_scheduler {
 public:
    instruction_scheduler(backend_shader *s, int grf_count,
                          int hw_reg_count, int block_count,
+                         int pressure_threshold,
                          instruction_scheduler_mode mode)
    {
       this->bs = s;
@@ -432,6 +433,7 @@ public:
       this->hw_reg_count = hw_reg_count;
       this->instructions.make_empty();
       this->post_reg_alloc = (mode == SCHEDULE_POST);
+      this->pressure_threshold = pressure_threshold;
       this->mode = mode;
       if (!post_reg_alloc) {
          this->reg_pressure_in = rzalloc_array(mem_ctx, int, block_count);
@@ -456,6 +458,8 @@ public:
          this->reads_remaining = rzalloc_array(mem_ctx, int, grf_count);
 
          this->hw_reads_remaining = rzalloc_array(mem_ctx, int, hw_reg_count);
+
+         this->max_reg_pressure = 0;
       } else {
          this->reg_pressure_in = NULL;
          this->livein = NULL;
@@ -508,7 +512,13 @@ public:
    exec_list instructions;
    backend_shader *bs;
 
+   int pressure_threshold;
    instruction_scheduler_mode mode;
+
+   /*
+    * The maximum register pressure encountered in the shader.
+    */
+   int max_reg_pressure;
 
    /*
     * The register pressure at the beginning of each basic block.
@@ -557,7 +567,7 @@ class fs_instruction_scheduler : public instruction_scheduler
 {
 public:
    fs_instruction_scheduler(fs_visitor *v, int grf_count, int hw_reg_count,
-                            int block_count,
+                            int block_count, int pressure_threshold,
                             instruction_scheduler_mode mode);
    void calculate_deps();
    bool is_compressed(fs_inst *inst);
@@ -574,8 +584,10 @@ public:
 fs_instruction_scheduler::fs_instruction_scheduler(fs_visitor *v,
                                                    int grf_count, int hw_reg_count,
                                                    int block_count,
+                                                   int pressure_threshold,
                                                    instruction_scheduler_mode mode)
-   : instruction_scheduler(v, grf_count, hw_reg_count, block_count, mode),
+   : instruction_scheduler(v, grf_count, hw_reg_count, block_count,
+                           pressure_threshold, mode),
      v(v)
 {
 }
@@ -749,7 +761,7 @@ public:
 
 vec4_instruction_scheduler::vec4_instruction_scheduler(vec4_visitor *v,
                                                        int grf_count)
-   : instruction_scheduler(v, grf_count, 0, 0, SCHEDULE_POST),
+   : instruction_scheduler(v, grf_count, 0, 0, 0, SCHEDULE_POST),
      v(v)
 {
 }
@@ -1393,7 +1405,7 @@ fs_instruction_scheduler::choose_instruction_to_schedule(int time)
 {
    schedule_node *chosen = NULL;
 
-   if (mode == SCHEDULE_PRE || mode == SCHEDULE_POST) {
+   if (post_reg_alloc || reg_pressure < pressure_threshold) {
       int chosen_unblocked_time = 0, chosen_delay = 0;
 
       /* First, find the earliest instruction we can possibly schedule. Then,
@@ -1524,8 +1536,10 @@ instruction_scheduler::schedule_instructions(bblock_t *block)
    int time = 0;
    int instructions_to_schedule = block->end_ip - block->start_ip + 1;
 
-   if (!post_reg_alloc)
+   if (!post_reg_alloc) {
       reg_pressure = reg_pressure_in[block->num];
+      max_reg_pressure = MAX2(max_reg_pressure, reg_pressure);
+   }
    block_idx = block->num;
 
    /* Remove non-DAG heads from the list. */
@@ -1547,6 +1561,7 @@ instruction_scheduler::schedule_instructions(bblock_t *block)
       if (!post_reg_alloc) {
          reg_pressure -= get_register_pressure_benefit(chosen->inst);
          update_register_pressure(chosen->inst);
+         max_reg_pressure = MAX2(max_reg_pressure, reg_pressure);
       }
 
       /* If we expected a delay for scheduling, then bump the clock to reflect
@@ -1684,17 +1699,21 @@ fs_visitor::cfg_clone(cfg_t *cfg) const
    return new(mem_ctx) cfg_t(&instructions);
 }
 
-void
-fs_visitor::schedule_instructions(instruction_scheduler_mode mode)
+int
+fs_visitor::schedule_instructions(int reg_pressure_threshold,
+                                  instruction_scheduler_mode mode)
 {
    if (mode != SCHEDULE_POST)
       calculate_live_intervals();
 
    fs_instruction_scheduler sched(this, alloc.count, first_non_payload_grf,
-                                  cfg->num_blocks, mode);
+                                  cfg->num_blocks, reg_pressure_threshold,
+                                  mode);
    sched.run(cfg);
 
    invalidate_live_intervals();
+
+   return sched.max_reg_pressure;
 }
 
 void
