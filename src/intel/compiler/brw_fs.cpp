@@ -6286,26 +6286,27 @@ void
 fs_visitor::allocate_registers(unsigned min_dispatch_width, bool allow_spilling)
 {
    bool allocated_without_spills;
-
-   static const enum instruction_scheduler_mode pre_modes[] = {
-      SCHEDULE_PRE,
-      SCHEDULE_PRE_NON_LIFO,
-   };
-
-   static const char *scheduler_mode_name[] = {
-      "top-down",
-      "non-lifo",
-   };
-
    bool spill_all = allow_spilling && (INTEL_DEBUG & DEBUG_SPILL_FS);
 
-   /* Try each scheduling heuristic to see if it can successfully register
-    * allocate without spilling.  They should be ordered by decreasing
-    * performance but increasing likelihood of allocating.
+   unsigned reg_pressure_threshold = 124;
+   unsigned max_reg_pressure = 200;
+   unsigned prev_max_reg_pressure;
+
+   this->shader_stats.scheduler_mode = "top-down";
+
+   /* The number of times we decreased the threshold and the actual register
+    * pressure didn't decrease
     */
-   for (unsigned i = 0; i < ARRAY_SIZE(pre_modes); i++) {
-      schedule_instructions(pre_modes[i]);
-      this->shader_stats.scheduler_mode = scheduler_mode_name[i];
+   unsigned num_missed = 0;
+   do {
+      prev_max_reg_pressure = max_reg_pressure;
+      max_reg_pressure = schedule_instructions(reg_pressure_threshold,
+                                               SCHEDULE_PRE);
+
+      if (max_reg_pressure >= prev_max_reg_pressure)
+         num_missed++;
+      else
+         num_missed = 0;
 
       if (0) {
          assign_regs_trivial();
@@ -6313,9 +6314,9 @@ fs_visitor::allocate_registers(unsigned min_dispatch_width, bool allow_spilling)
       } else {
          allocated_without_spills = assign_regs(false, spill_all);
       }
-      if (allocated_without_spills)
-         break;
-   }
+
+      reg_pressure_threshold -= 8;
+   } while(!allocated_without_spills && num_missed < 8);
 
    if (!allocated_without_spills) {
       if (!allow_spilling)
@@ -6356,7 +6357,7 @@ fs_visitor::allocate_registers(unsigned min_dispatch_width, bool allow_spilling)
 
    opt_bank_conflicts();
 
-   schedule_instructions(SCHEDULE_POST);
+   schedule_instructions(0, SCHEDULE_POST);
 
    if (stage != MESA_SHADER_COMPUTE &&
        dispatch_width == 16 && cfg->cycle_count > 2 * simd8_cycles) {
