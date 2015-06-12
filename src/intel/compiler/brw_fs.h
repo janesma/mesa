@@ -343,6 +343,8 @@ public:
    bool failed;
    char *fail_msg;
 
+   unsigned simd8_cycles;
+
    /** Register numbers for thread payload fields. */
    struct thread_payload {
       uint8_t source_depth_reg;
