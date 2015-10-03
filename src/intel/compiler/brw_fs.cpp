@@ -6292,7 +6292,7 @@ fs_visitor::allocate_registers(unsigned min_dispatch_width, bool allow_spilling)
    unsigned max_reg_pressure = 200;
    unsigned prev_max_reg_pressure;
 
-   this->shader_stats.scheduler_mode = "top-down";
+   this->shader_stats.scheduler_mode = "bottom-up";
 
    /* The number of times we decreased the threshold and the actual register
     * pressure didn't decrease
