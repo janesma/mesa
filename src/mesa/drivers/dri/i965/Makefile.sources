@@ -137,6 +137,12 @@ i965_FILES = \
 	brw_pipe_control.c \
 	brw_oa_hsw.h \
 	brw_oa_hsw.c \
+	brw_oa_bdw.h \
+	brw_oa_bdw.c \
+	brw_oa_chv.h \
+	brw_oa_chv.c \
+	brw_oa_skl.h \
+	brw_oa_skl.c \
 	brw_performance_query.h \
 	brw_performance_query.c \
 	brw_program.c \
