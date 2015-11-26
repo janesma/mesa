@@ -1201,6 +1201,11 @@ struct brw_context
          uint64_t slice_mask;          /** $SubsliceMask */
       } sys_vars;
 
+      /* OA metric sets, indexed by GUID, as know by Mesa at build time,
+       * to cross-reference with the GUIDs of configs advertised by the
+       * kernel at runtime */
+      struct hash_table *oa_metrics_table;
+
       struct brw_perf_query queries[MAX_PERF_QUERIES];
       int n_queries;
 
