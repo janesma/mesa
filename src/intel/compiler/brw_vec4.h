@@ -157,6 +157,7 @@ public:
    bool is_dep_ctrl_unsafe(const vec4_instruction *inst);
    void opt_set_dependency_control();
    void opt_schedule_instructions();
+   void td_opt_schedule_instructions();
    void convert_to_hw_regs();
    void fixup_3src_null_dest();
 

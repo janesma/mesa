@@ -87,6 +87,7 @@ libintel_compiler_files = files(
   'brw_schedule_instructions.cpp',
   'brw_shader.cpp',
   'brw_shader.h',
+  'brw_td_schedule_instructions.cpp',
   'brw_vec4_builder.h',
   'brw_vec4_cmod_propagation.cpp',
   'brw_vec4_copy_propagation.cpp',

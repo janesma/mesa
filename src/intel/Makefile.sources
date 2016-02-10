@@ -93,6 +93,7 @@ COMPILER_FILES = \
 	compiler/brw_schedule_instructions.cpp \
 	compiler/brw_shader.cpp \
 	compiler/brw_shader.h \
+	compiler/brw_td_schedule_instructions.cpp \
 	compiler/brw_vec4_builder.h \
 	compiler/brw_vec4_cmod_propagation.cpp \
 	compiler/brw_vec4_copy_propagation.cpp \
