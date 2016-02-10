@@ -165,6 +165,8 @@ public:
    /* returns the maximum register pressure for before register allocation */
    int schedule_instructions(int reg_pressure_threshold,
                              instruction_scheduler_mode mode);
+   int td_schedule_instructions(int reg_pressure_threshold,
+                                instruction_scheduler_mode mode);
    cfg_t *cfg_clone(cfg_t *cfg) const;
 
    void insert_gen4_send_dependency_workarounds();
