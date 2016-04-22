@@ -543,11 +543,16 @@ intel_create_image(__DRIscreen *dri_screen,
 {
    __DRIimage *image;
    struct intel_screen *screen = dri_screen->driverPrivate;
+   const struct gen_device_info *devinfo = &screen->devinfo;
    uint32_t tiling;
    int cpp;
    unsigned long pitch;
 
-   tiling = I915_TILING_X;
+   if (devinfo->gen >= 9) {
+      tiling = I915_TILING_Y;
+   } else {
+      tiling = I915_TILING_X;
+   }
    if (use & __DRI_IMAGE_USE_CURSOR) {
       if (width != 64 || height != 64)
 	 return NULL;
@@ -1203,11 +1208,18 @@ intel_init_bufmgr(struct intel_screen *screen)
 static bool
 intel_detect_swizzling(struct intel_screen *screen)
 {
+   const struct gen_device_info *devinfo = &screen->devinfo;
    drm_intel_bo *buffer;
    unsigned long flags = 0;
    unsigned long aligned_pitch;
-   uint32_t tiling = I915_TILING_X;
    uint32_t swizzle_mode = 0;
+   uint32_t tiling;
+
+   if (devinfo->gen >= 9) {
+      tiling = I915_TILING_Y;
+   } else {
+      tiling = I915_TILING_X;
+   }
 
    buffer = drm_intel_bo_alloc_tiled(screen->bufmgr, "swizzle test",
 				     64, 64, 4,
@@ -1713,6 +1725,7 @@ intelAllocateBuffer(__DRIscreen *dri_screen,
 {
    struct intel_buffer *intelBuffer;
    struct intel_screen *screen = dri_screen->driverPrivate;
+   const struct gen_device_info *devinfo = &screen->devinfo;
 
    assert(attachment == __DRI_BUFFER_FRONT_LEFT ||
           attachment == __DRI_BUFFER_BACK_LEFT);
@@ -1722,7 +1735,12 @@ intelAllocateBuffer(__DRIscreen *dri_screen,
       return NULL;
 
    /* The front and back buffers are color buffers, which are X tiled. */
-   uint32_t tiling = I915_TILING_X;
+   uint32_t tiling;
+   if (devinfo->gen >= 9) {
+      tiling = I915_TILING_Y;
+   } else {
+      tiling = I915_TILING_X;
+   }
    unsigned long pitch;
    int cpp = format / 8;
    intelBuffer->bo = drm_intel_bo_alloc_tiled(screen->bufmgr,
