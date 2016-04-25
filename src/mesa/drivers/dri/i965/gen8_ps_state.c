@@ -182,7 +182,7 @@ gen8_upload_ps_state(struct brw_context *brw,
                      const struct brw_wm_prog_data *prog_data,
                      uint32_t fast_clear_op)
 {
-   uint32_t dw3 = 0, dw6 = 0, dw7 = 0, ksp0, ksp2 = 0;
+   uint32_t dw3 = 0, dw6 = 0, dw7 = 0, ksp0, ksp1 = 0, ksp2 = 0;
 
    /* Initialize the execution mask with VMask.  Otherwise, derivatives are
     * incorrect for subspans where some of the pixels are unlit.  We believe
@@ -241,12 +241,34 @@ gen8_upload_ps_state(struct brw_context *brw,
    if (prog_data->dispatch_16)
       dw6 |= GEN7_PS_16_DISPATCH_ENABLE;
 
+   if (prog_data->dispatch_32) {
+      if (brw->num_samples == 16 && !prog_data->persample_dispatch) {
+         /* From the SKL+ 3DSTATE_PS hardware docs:
+          * "When NUM_MULTISAMPLES = 16 or FORCE_SAMPLE_COUNT = 16, SIMD32
+          *  Dispatch must not be enabled for PER_PIXEL dispatch mode."
+          *
+          * But disabling 32-wide dispatch at this point would cause the
+          * ordering of KSP offsets to change unless the two other dispatch
+          * modes are enabled.
+          *
+          * XXX - Use a saner representation of brw_wm_prog_data so we can do
+          *       the right thing if the assertion below doesn't hold.
+          */
+         assert(prog_data->dispatch_8 && prog_data->dispatch_16);
+      } else {
+         dw6 |= GEN7_PS_32_DISPATCH_ENABLE;
+      }
+   }
+
    dw7 |= prog_data->base.dispatch_grf_start_reg <<
           GEN7_PS_DISPATCH_START_GRF_SHIFT_0;
+   dw7 |= prog_data->dispatch_grf_start_reg_1 <<
+          GEN7_PS_DISPATCH_START_GRF_SHIFT_1;
    dw7 |= prog_data->dispatch_grf_start_reg_2 <<
           GEN7_PS_DISPATCH_START_GRF_SHIFT_2;
 
    ksp0 = stage_state->prog_offset;
+   ksp1 = stage_state->prog_offset + prog_data->prog_offset_1;
    ksp2 = stage_state->prog_offset + prog_data->prog_offset_2;
 
    BEGIN_BATCH(12);
@@ -264,7 +286,7 @@ gen8_upload_ps_state(struct brw_context *brw,
    }
    OUT_BATCH(dw6);
    OUT_BATCH(dw7);
-   OUT_BATCH(0); /* kernel 1 pointer */
+   OUT_BATCH(ksp1);
    OUT_BATCH(0);
    OUT_BATCH(ksp2);
    OUT_BATCH(0);
@@ -285,7 +307,8 @@ const struct brw_tracked_state gen8_ps_state = {
       .mesa  = _NEW_MULTISAMPLE,
       .brw   = BRW_NEW_BATCH |
                BRW_NEW_BLORP |
-               BRW_NEW_FS_PROG_DATA,
+               BRW_NEW_FS_PROG_DATA |
+               BRW_NEW_NUM_SAMPLES,
    },
    .emit = upload_ps_state,
 };

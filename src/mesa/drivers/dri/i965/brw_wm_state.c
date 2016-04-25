@@ -89,27 +89,41 @@ brw_upload_wm_unit(struct brw_context *brw)
 			sizeof(*wm), 32, &brw->wm.base.state_offset);
    memset(wm, 0, sizeof(*wm));
 
-   if (prog_data->dispatch_8 && prog_data->dispatch_16) {
-      /* These two fields should be the same pre-gen6, which is why we
-       * only have one hardware field to program for both dispatch
-       * widths.
-       */
-      assert(prog_data->base.dispatch_grf_start_reg ==
-	     prog_data->dispatch_grf_start_reg_2);
-   }
+   /* These three fields should be the same pre-gen6, which is why we only
+    * have one hardware field to program for both dispatch widths.
+    */
+   assert(!prog_data->dispatch_8 || !prog_data->dispatch_16 ||
+          prog_data->base.dispatch_grf_start_reg ==
+          prog_data->dispatch_grf_start_reg_2);
+   assert(!prog_data->dispatch_8 || !prog_data->dispatch_32 ||
+          2 * prog_data->base.dispatch_grf_start_reg ==
+          prog_data->dispatch_grf_start_reg_1);
+   assert(!prog_data->dispatch_16 || !prog_data->dispatch_32 ||
+          prog_data->dispatch_grf_start_reg_1 ==
+          2 * prog_data->dispatch_grf_start_reg_2);
 
    /* BRW_NEW_PROGRAM_CACHE | BRW_NEW_FS_PROG_DATA */
    wm->wm5.enable_8_pix = prog_data->dispatch_8;
    wm->wm5.enable_16_pix = prog_data->dispatch_16;
+   wm->wm5.enable_32_pix = prog_data->dispatch_32;
 
-   if (prog_data->dispatch_8 || prog_data->dispatch_16) {
-      wm->thread0.grf_reg_count = prog_data->reg_blocks_0;
-      wm->thread0.kernel_start_pointer =
+   wm->thread0.grf_reg_count = prog_data->reg_blocks_0;
+   wm->thread0.kernel_start_pointer =
+      brw_program_reloc(brw,
+                        brw->wm.base.state_offset +
+                        offsetof(struct brw_wm_unit_state, thread0),
+                        brw->wm.base.prog_offset +
+                        (wm->thread0.grf_reg_count << 1)) >> 6;
+
+   if (prog_data->prog_offset_1) {
+      wm->wm8.grf_reg_count_1 = prog_data->reg_blocks_1;
+      wm->wm8.kernel_start_pointer_1 =
          brw_program_reloc(brw,
                            brw->wm.base.state_offset +
-                           offsetof(struct brw_wm_unit_state, thread0),
+                           offsetof(struct brw_wm_unit_state, wm9),
                            brw->wm.base.prog_offset +
-                           (wm->thread0.grf_reg_count << 1)) >> 6;
+                           prog_data->prog_offset_1 +
+                           (wm->wm8.grf_reg_count_1 << 1)) >> 6;
    }
 
    if (prog_data->prog_offset_2) {

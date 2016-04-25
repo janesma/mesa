@@ -80,7 +80,7 @@ gen6_upload_wm_state(struct brw_context *brw,
                      bool statistic_enable)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
-   uint32_t dw2, dw4, dw5, dw6, ksp0, ksp2;
+   uint32_t dw2, dw4, dw5, dw6, ksp0, ksp1, ksp2;
 
    /* We can't fold this into gen6_upload_wm_push_constants(), because
     * according to the SNB PRM, vol 2 part 1 section 7.2.2
@@ -113,7 +113,7 @@ gen6_upload_wm_state(struct brw_context *brw,
       ADVANCE_BATCH();
    }
 
-   dw2 = dw4 = dw5 = dw6 = ksp2 = 0;
+   dw2 = dw4 = dw5 = dw6 = ksp2 = ksp1 = 0;
 
    if (statistic_enable)
       dw4 |= GEN6_WM_STATISTICS_ENABLE;
@@ -138,12 +138,18 @@ gen6_upload_wm_state(struct brw_context *brw,
    if (prog_data->dispatch_16)
       dw5 |= GEN6_WM_16_DISPATCH_ENABLE;
 
+   if (prog_data->dispatch_32)
+      dw5 |= GEN6_WM_32_DISPATCH_ENABLE;
+
    dw4 |= prog_data->base.dispatch_grf_start_reg <<
           GEN6_WM_DISPATCH_START_GRF_SHIFT_0;
+   dw4 |= prog_data->dispatch_grf_start_reg_1 <<
+          GEN6_WM_DISPATCH_START_GRF_SHIFT_1;
    dw4 |= prog_data->dispatch_grf_start_reg_2 <<
           GEN6_WM_DISPATCH_START_GRF_SHIFT_2;
 
    ksp0 = stage_state->prog_offset;
+   ksp1 = stage_state->prog_offset + prog_data->prog_offset_1;
    ksp2 = stage_state->prog_offset + prog_data->prog_offset_2;
 
    if (dual_source_blend_enable)
@@ -230,7 +236,7 @@ gen6_upload_wm_state(struct brw_context *brw,
    OUT_BATCH(dw4);
    OUT_BATCH(dw5);
    OUT_BATCH(dw6);
-   OUT_BATCH(0); /* kernel 1 pointer */
+   OUT_BATCH(ksp1);
    OUT_BATCH(ksp2);
    ADVANCE_BATCH();
 }

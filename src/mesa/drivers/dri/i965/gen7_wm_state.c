@@ -152,11 +152,11 @@ gen7_upload_ps_state(struct brw_context *brw,
                      unsigned fast_clear_op)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
-   uint32_t dw2, dw4, dw5, ksp0, ksp2;
+   uint32_t dw2, dw4, dw5, ksp0, ksp1, ksp2;
    const int max_threads_shift = brw->is_haswell ?
       HSW_PS_MAX_THREADS_SHIFT : IVB_PS_MAX_THREADS_SHIFT;
 
-   dw2 = dw4 = dw5 = ksp2 = 0;
+   dw2 = dw4 = dw5 = ksp1 = ksp2 = 0;
 
    const unsigned sampler_count =
       DIV_ROUND_UP(CLAMP(stage_state->sampler_count, 0, 16), 4);
@@ -217,6 +217,9 @@ gen7_upload_ps_state(struct brw_context *brw,
 
    dw4 |= fast_clear_op;
 
+   if (prog_data->dispatch_32)
+      dw4 |= GEN7_PS_32_DISPATCH_ENABLE;
+
    if (prog_data->dispatch_16)
       dw4 |= GEN7_PS_16_DISPATCH_ENABLE;
 
@@ -225,10 +228,13 @@ gen7_upload_ps_state(struct brw_context *brw,
 
    dw5 |= prog_data->base.dispatch_grf_start_reg <<
           GEN7_PS_DISPATCH_START_GRF_SHIFT_0;
+   dw5 |= prog_data->dispatch_grf_start_reg_1 <<
+          GEN7_PS_DISPATCH_START_GRF_SHIFT_1;
    dw5 |= prog_data->dispatch_grf_start_reg_2 <<
           GEN7_PS_DISPATCH_START_GRF_SHIFT_2;
 
    ksp0 = stage_state->prog_offset;
+   ksp1 = stage_state->prog_offset + prog_data->prog_offset_1;
    ksp2 = stage_state->prog_offset + prog_data->prog_offset_2;
 
    BEGIN_BATCH(8);
@@ -244,7 +250,7 @@ gen7_upload_ps_state(struct brw_context *brw,
    }
    OUT_BATCH(dw4);
    OUT_BATCH(dw5);
-   OUT_BATCH(0); /* kernel 1 pointer */
+   OUT_BATCH(ksp1);
    OUT_BATCH(ksp2);
    ADVANCE_BATCH();
 }
