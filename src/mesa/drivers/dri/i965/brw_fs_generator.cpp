@@ -540,7 +540,7 @@ fs_generator::generate_barrier(fs_inst *inst, struct brw_reg src)
 
 void
 fs_generator::generate_linterp(fs_inst *inst,
-			     struct brw_reg dst, struct brw_reg *src)
+                               struct brw_reg dst, struct brw_reg *src)
 {
    /* PLN reads:
     *                      /   in SIMD16   \
@@ -563,16 +563,41 @@ fs_generator::generate_linterp(fs_inst *inst,
     * See also: emit_interpolation_setup_gen4().
     */
    struct brw_reg delta_x = src[0];
-   struct brw_reg delta_y = offset(src[0], inst->exec_size / 8);
+   struct brw_reg delta_y = offset(src[0], 1);
    struct brw_reg interp = src[1];
 
    if (devinfo->has_pln &&
        (devinfo->gen >= 7 || (delta_x.nr & 1) == 0)) {
-      brw_PLN(p, dst, interp, delta_x);
+      brw_inst *insn = brw_PLN(p, dst, interp, delta_x);
+      if (inst->conditional_mod)
+         brw_inst_set_cond_modifier(devinfo, insn, inst->conditional_mod);
+
    } else {
-      brw_LINE(p, brw_null_reg(), interp, delta_x);
-      brw_MAC(p, dst, suboffset(interp, 1), delta_y);
+      const unsigned lower_size = MIN2(8, inst->exec_size);
+
+      brw_push_insn_state(p);
+      brw_set_default_exec_size(p, BRW_EXECUTE_8);
+      brw_set_default_compression(p, false);
+
+      for (unsigned i = 0; i < inst->exec_size / lower_size; i++) {
+         brw_inst *insn = brw_LINE(p, brw_null_reg(), interp, offset(delta_x, 2 * i));
+         brw_inst_set_group(devinfo, insn, inst->group + lower_size * i);
+         if (devinfo->gen >= 6)
+            brw_inst_set_acc_wr_control(devinfo, insn, 1);
+      }
+
+      for (unsigned i = 0; i < inst->exec_size / lower_size; i++) {
+         brw_inst *insn = brw_MAC(p, offset(dst, i), suboffset(interp, 1),
+                                  offset(delta_y, 2 * i));
+         brw_inst_set_group(devinfo, insn, inst->group + lower_size * i);
+         if (inst->conditional_mod)
+            brw_inst_set_cond_modifier(devinfo, insn, inst->conditional_mod);
+      }
+
+      brw_pop_insn_state(p);
    }
+
+   assert(!inst->no_dd_clear && !inst->no_dd_check);
 }
 
 void
@@ -1832,6 +1857,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
 	 break;
       case FS_OPCODE_LINTERP:
 	 generate_linterp(inst, dst, src);
+         multiple_instructions_emitted = true;
 	 break;
       case FS_OPCODE_PIXEL_X:
          assert(src[0].type == BRW_REGISTER_TYPE_UW);
