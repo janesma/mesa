@@ -309,6 +309,10 @@ fs_visitor::nir_emit_if(nir_if *if_stmt)
    nir_emit_cf_list(&if_stmt->else_list);
 
    bld.emit(BRW_OPCODE_ENDIF);
+
+   if (devinfo->gen < 7)
+      limit_dispatch_width(16, "Non-uniform control flow unsupported "
+                           "in SIMD32 mode.");
 }
 
 void
@@ -319,6 +323,10 @@ fs_visitor::nir_emit_loop(nir_loop *loop)
    nir_emit_cf_list(&loop->body);
 
    bld.emit(BRW_OPCODE_WHILE);
+
+   if (devinfo->gen < 7)
+      limit_dispatch_width(16, "Non-uniform control flow unsupported "
+                           "in SIMD32 mode.");
 }
 
 void
