@@ -5679,7 +5679,7 @@ fs_visitor::calculate_register_pressure()
 bool
 fs_visitor::opt_drop_redundant_mov_to_flags()
 {
-   bool flag_mov_found[2] = {false};
+   bool flag_mov_found[4] = {false};
    bool progress = false;
 
    /* Instructions removed by this pass can only be added if this were true */
