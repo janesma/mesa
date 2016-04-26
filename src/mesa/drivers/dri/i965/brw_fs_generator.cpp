@@ -1917,13 +1917,11 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
          multiple_instructions_emitted = true;
 	 break;
       case FS_OPCODE_PIXEL_X:
-         assert(src[0].type == BRW_REGISTER_TYPE_UW);
-         src[0].subnr = 0 * type_sz(src[0].type);
-         brw_MOV(p, dst, stride(src[0], 8, 4, 1));
-         break;
       case FS_OPCODE_PIXEL_Y:
+         assert(inst->exec_size <= 16);
          assert(src[0].type == BRW_REGISTER_TYPE_UW);
-         src[0].subnr = 4 * type_sz(src[0].type);
+         if (inst->opcode == FS_OPCODE_PIXEL_Y)
+            src[0].subnr += 4 * type_sz(src[0].type);
          brw_MOV(p, dst, stride(src[0], 8, 4, 1));
          break;
       case FS_OPCODE_GET_BUFFER_SIZE:
