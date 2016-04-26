@@ -150,10 +150,10 @@ struct backend_instruction {
    bool saturate:1;
    bool shadow_compare:1;
 
-   /* Chooses which flag subregister (f0.0 or f0.1) is used for conditional
-    * mod and predication.
+   /* Chooses which flag subregister (f0.0-f1.1) is used for conditional mod
+    * and predication, in 16 bit units.
     */
-   unsigned flag_subreg:1;
+   unsigned flag_subreg:2;
 
    /** The number of hardware registers used for a message header. */
    uint8_t header_size;
