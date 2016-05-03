@@ -65,9 +65,9 @@ surfaceless_free_images(struct dri2_egl_surface *dri2_surf)
       dri2_dpy->image->destroyImage(dri2_surf->front);
       dri2_surf->front = NULL;
    }
-   if(dri2_surf->back) {
-      dri2_dpy->image->destroyImage(dri2_surf->back);
-      dri2_surf->back = NULL;
+   if(dri2_surf->surfaceless_back) {
+      dri2_dpy->image->destroyImage(dri2_surf->surfaceless_back);
+      dri2_surf->surfaceless_back = NULL;
    }
 }
 
@@ -75,9 +75,9 @@ static EGLBoolean
 surfaceless_swap_buffers(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *draw)
 {
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(draw);
-    __DRIimage *temp = dri2_surf->back;
+    __DRIimage *temp = dri2_surf->surfaceless_back;
 
-   dri2_surf->back = dri2_surf->front;
+   dri2_surf->surfaceless_back = dri2_surf->front;
    dri2_surf->front = temp;
 }
 
@@ -105,12 +105,12 @@ surfaceless_image_get_buffers(__DRIdrawable *driDrawable,
       buffers->front = dri2_surf->front;
    }
    if (buffer_mask & __DRI_IMAGE_BUFFER_BACK) {
-      if (!dri2_surf->back)
-         dri2_surf->back =
+      if (!dri2_surf->surfaceless_back)
+         dri2_surf->surfaceless_back =
             surfaceless_alloc_image(dri2_dpy, dri2_surf);
 
       buffers->image_mask |= __DRI_IMAGE_BUFFER_BACK;
-      buffers->back = dri2_surf->back;
+      buffers->back = dri2_surf->surfaceless_back;
    }
 
    return 1;
