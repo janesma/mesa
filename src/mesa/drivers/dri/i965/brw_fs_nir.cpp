@@ -3602,6 +3602,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       } else {
          fs_reg indirect = retype(get_nir_src(instr->src[0]),
                                   BRW_REGISTER_TYPE_UD);
+         int num_components = instr->num_components;
 
          /* We need to pass a size to the MOV_INDIRECT but we don't want it to
           * go past the end of the uniform.  In order to keep the n'th
@@ -3609,14 +3610,51 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
           * one component of the vector.
           */
          assert(instr->const_index[1] >=
-                instr->num_components * (int) type_sz(dest.type));
-         unsigned read_size = instr->const_index[1] -
-            (instr->num_components - 1) * type_sz(dest.type);
+                num_components * (int) type_sz(dest.type));
 
-         for (unsigned j = 0; j < instr->num_components; j++) {
+         unsigned read_size = instr->const_index[1] -
+            (num_components - 1) * type_sz(dest.type);
+
+         fs_reg temp = dest;
+         fs_reg indirect_chv_high_32bit;
+         bool is_cherryview_64bit =
+            devinfo->is_cherryview && type_sz(dest.type) == 8;
+         if (is_cherryview_64bit) {
+            /* Duplicate the number of components because we will read
+             * each 64-bit component with two 32-bit reads.
+             */
+            num_components *= 2;
+            /* Temporary destination to save the data. We will do a shuffle
+             * later.
+             */
+            temp = bld.vgrf(BRW_REGISTER_TYPE_UD, num_components);
+            indirect_chv_high_32bit = vgrf(glsl_type::uint_type);
+            /* Calculate indirect address to read high 32 bits */
+            bld.ADD(indirect_chv_high_32bit, indirect, brw_imm_ud(4));
+         }
+
+         int i, j;
+         for (j = 0, i = 0; i < num_components; j++, i++) {
             bld.emit(SHADER_OPCODE_MOV_INDIRECT,
-                     offset(dest, bld, j), offset(src, bld, j),
+                     offset(temp, bld, i), offset(src, bld, j),
                      indirect, brw_imm_ud(read_size));
+
+            if (is_cherryview_64bit) {
+               /* Read higher 32 bits, increase 'i' to save the
+                * data in the right destination register's offset.
+                */
+               i++;
+               bld.emit(SHADER_OPCODE_MOV_INDIRECT,
+                        offset(temp, bld, i), offset(src, bld, j),
+                        indirect_chv_high_32bit, brw_imm_ud(read_size));
+            }
+         }
+
+         if (is_cherryview_64bit) {
+            shuffle_32bit_load_result_to_64bit_data(bld,
+                                                    dest,
+                                                    temp,
+                                                    instr->num_components);
          }
       }
       break;
