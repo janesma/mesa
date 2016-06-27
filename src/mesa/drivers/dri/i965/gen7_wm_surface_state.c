@@ -390,7 +390,8 @@ gen7_update_texture_surface(struct gl_context *ctx,
       const unsigned swizzle = (unlikely(alpha_depth) ? SWIZZLE_XYZW :
                                 brw_get_texture_swizzle(&brw->ctx, obj));
 
-      mesa_format mesa_fmt = plane == 0 ? intel_obj->_Format : mt->format;
+      mesa_format mesa_fmt =
+         obj->Target != GL_TEXTURE_EXTERNAL_OES ? intel_obj->_Format : mt->format;
       unsigned format = translate_tex_format(brw, mesa_fmt,
                                              sampler->sRGBDecode);
 
