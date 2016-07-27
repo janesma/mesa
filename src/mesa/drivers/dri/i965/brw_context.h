@@ -1207,9 +1207,12 @@ struct brw_context
          uint64_t timestamp_frequency; /** $GpuTimestampFrequency */
          uint64_t n_eus;               /** $EuCoresTotalCount */
          uint64_t n_eu_slices;         /** $EuSlicesTotalCount */
+         uint64_t n_eu_sub_slices;     /** $EuSubslicesTotalCount */
          uint64_t eu_threads_count;    /** $EuThreadsCount */
          uint64_t subslice_mask;       /** $SliceMask */
          uint64_t slice_mask;          /** $SubsliceMask */
+         uint64_t gt_min_freq;         /** $GpuMinFrequency */
+         uint64_t gt_max_freq;         /** $GpuMaxFrequency */
       } sys_vars;
 
       /* The system's page size */
