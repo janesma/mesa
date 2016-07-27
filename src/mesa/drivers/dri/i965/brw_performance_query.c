@@ -60,8 +60,7 @@
 #include "util/bitset.h"
 #include "util/ralloc.h"
 #include "util/hash_table.h"
-
-#include "glsl/list.h"
+#include "util/list.h"
 
 #include "brw_context.h"
 #include "brw_defines.h"
@@ -421,9 +420,6 @@ emit_mi_report_perf_count(struct brw_context *brw,
 {
    assert(offset_in_bytes % 64 == 0);
 
-   /* Reports apparently don't always get written unless we flush first. */
-   brw_emit_mi_flush(brw);
-
    if (brw->gen < 8) {
       BEGIN_BATCH(3);
       OUT_BATCH(GEN6_MI_REPORT_PERF_COUNT);
@@ -440,7 +436,6 @@ emit_mi_report_perf_count(struct brw_context *brw,
       ADVANCE_BATCH();
    }
 
-   /* Reports apparently don't always get written unless we flush after. */
    brw_emit_mi_flush(brw);
 }
 
@@ -514,16 +509,19 @@ init_oa_sys_vars(struct brw_context *brw)
       if (info->gt == 1) {
          brw->perfquery.sys_vars.n_eus = 10;
          brw->perfquery.sys_vars.n_eu_slices = 1;
+         brw->perfquery.sys_vars.n_eu_sub_slices = 1;
          brw->perfquery.sys_vars.slice_mask = 0x1;
          brw->perfquery.sys_vars.subslice_mask = 0x1;
       } else if (info->gt == 2) {
          brw->perfquery.sys_vars.n_eus = 20;
          brw->perfquery.sys_vars.n_eu_slices = 1;
+         brw->perfquery.sys_vars.n_eu_sub_slices = 2;
          brw->perfquery.sys_vars.slice_mask = 0x1;
          brw->perfquery.sys_vars.subslice_mask = 0x3;
       } else if (info->gt == 3) {
          brw->perfquery.sys_vars.n_eus = 40;
          brw->perfquery.sys_vars.n_eu_slices = 2;
+         brw->perfquery.sys_vars.n_eu_sub_slices = 2;
          brw->perfquery.sys_vars.slice_mask = 0x3;
          brw->perfquery.sys_vars.subslice_mask = 0xf;
       }
@@ -549,6 +547,7 @@ init_oa_sys_vars(struct brw_context *brw)
          ss_max = 3;
 
          /* NB: the timestamp frequency is different for Broxton */
+         /* XXX: would need to replace assert before proposing to upstream... */
          assert(!brw->is_broxton);
 
          brw->perfquery.sys_vars.timestamp_frequency = 12000000;
@@ -573,7 +572,7 @@ init_oa_sys_vars(struct brw_context *brw)
          ss_mask = 0;
 
       brw->perfquery.sys_vars.n_eus = n_eus;
-      brw->perfquery.sys_vars.n_eu_slices = _mesa_bitcount(slice_mask);
+      brw->perfquery.sys_vars.n_eu_slices = __builtin_popcount(slice_mask);
       brw->perfquery.sys_vars.slice_mask = slice_mask;
 
       /* Note: some of the metrics we have (as described in XML)
@@ -588,6 +587,8 @@ init_oa_sys_vars(struct brw_context *brw)
       }
 
       brw->perfquery.sys_vars.subslice_mask = subslice_mask;
+      brw->perfquery.sys_vars.n_eu_sub_slices =
+         __builtin_popcount(subslice_mask);
    }
 
    brw->perfquery.sys_vars.eu_threads_count =
@@ -951,6 +952,30 @@ brw_begin_perf_query(struct gl_context *ctx,
 
    DBG("Begin(%d)\n", o->Id);
 
+   /* The intention of performance queries is to measure the work between
+    * the begin/end delimiters while the HW performance counters themselves
+    * are global or per-context and there's no special HW feature to exclude
+    * the effects of nearby commands (outside the begin/end markers) that
+    * may run on the GPU in parallel skewing the counters.
+    *
+    * To ensure a query only measures the intermediate commands we therefore
+    * need to insert a quiescent pipeline bubble either side of the query.
+    *
+    * Unfortunately the INTEL_performance_query spec doesn't define specific
+    * stalling behaviour (or ideally even give developers control over it)
+    * we implicitly insert full pipeline stalls before and after all queries.
+    *
+    * Notably this will result in redundant sequential stalls in the case of
+    * back-to-back queries, but for now we assume it's not worth the added
+    * complexity to try and avoid. N.B. the final query metrics are only based
+    * on OA reports or counter deltas measured between the stalls so even
+    * though the total wall clock time of the workload is stretched by larger
+    * pipeline bubbles the counter deltas between queries are what matter more
+    * for the query results. For lower overhead capturing of metrics periodic
+    * sampling may be a better choice than INTEL_performance_query.
+    */
+   brw_emit_mi_flush(brw);
+
    switch(obj->query->kind) {
    case OA_COUNTERS:
       /* If the OA counters aren't already on, enable them. */
@@ -1076,6 +1101,14 @@ brw_end_perf_query(struct gl_context *ctx,
    struct brw_perf_query_object *obj = brw_perf_query(o);
 
    DBG("End(%d)\n", o->Id);
+
+   /* Ensure that the work associated with the queried commands will have
+    * finished before taking our query end counter readings.
+    *
+    * For more details see comment in brw_begin_perf_query for
+    * corresponding flush.
+    */
+   brw_emit_mi_flush(brw);
 
    switch(obj->query->kind) {
    case OA_COUNTERS:
