@@ -25,9 +25,6 @@ import xml.etree.ElementTree as ET
 import argparse
 import sys
 
-symbol_to_perf_map = { 'RenderBasic' : '3D',
-                       'ComputeBasic' : 'COMPUTE' }
-
 def print_err(*args):
     sys.stderr.write(' '.join(map(str,args)) + '\n')
 
@@ -170,9 +167,13 @@ exp_ops["&&"]   = (2, splice_logical_and)
 hw_vars = {}
 hw_vars["$EuCoresTotalCount"] = "brw->perfquery.sys_vars.n_eus"
 hw_vars["$EuSlicesTotalCount"] = "brw->perfquery.sys_vars.n_eu_slices"
+hw_vars["$EuSubslicesTotalCount"] = "brw->perfquery.sys_vars.n_eu_sub_slices"
 hw_vars["$EuThreadsCount"] = "brw->perfquery.sys_vars.eu_threads_count"
 hw_vars["$SliceMask"] = "brw->perfquery.sys_vars.slice_mask"
 hw_vars["$SubsliceMask"] = "brw->perfquery.sys_vars.subslice_mask"
+hw_vars["$GpuTimestampFrequency"] = "brw->perfquery.sys_vars.timestamp_frequency"
+hw_vars["$GpuMinFrequency"] = "brw->perfquery.sys_vars.gt_min_freq"
+hw_vars["$GpuMaxFrequency"] = "brw->perfquery.sys_vars.gt_max_freq"
 
 counter_vars = {}
 
@@ -212,6 +213,10 @@ def output_rpn_equation_code(set, counter, equation, counter_vars):
                 equation + "\"")
 
     value = stack.pop()
+
+    if value in hw_vars:
+        value = hw_vars[value];
+
     c("\nreturn " + value + ";")
 
 def splice_rpn_expression(set, counter, expression):
@@ -464,7 +469,7 @@ for set in tree.findall(".//set"):
 
     c(".kind = OA_COUNTERS,\n")
     c(".name = \"" + set.get('name') + "\",\n")
-    c(".guid = \"" + set.get('guid') + "\",\n")
+    c(".guid = \"" + set.get('hw_config_guid') + "\",\n")
 
     c(".counters = " + chipset + "_" + set.get('underscore_name') + "_query_counters,")
     c(".n_counters = 0,")
