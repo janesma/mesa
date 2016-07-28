@@ -936,6 +936,15 @@ open_i915_perf_oa_stream(struct brw_context *brw,
    return true;
 }
 
+static void
+close_perf(struct brw_context *brw)
+{
+   if (brw->perfquery.oa_stream_fd != -1) {
+      close(brw->perfquery.oa_stream_fd);
+      brw->perfquery.oa_stream_fd = -1;
+   }
+}
+
 /**
  * Driver hook for glBeginPerfQueryINTEL().
  */
@@ -978,6 +987,23 @@ brw_begin_perf_query(struct gl_context *ctx,
 
    switch(obj->query->kind) {
    case OA_COUNTERS:
+
+      /* Opening an i915 perf stream implies exclusive access to the OA unit
+       * which will generate counter reports for a specific counter set with a
+       * specific layout/format so we can't begin any OA based queries that
+       * require a different counter set or format unless we get an opportunity
+       * to close the stream and open a new one...
+       */
+      if (brw->perfquery.oa_stream_fd != -1 &&
+          brw->perfquery.current_oa_metrics_set_id !=
+          query->oa_metrics_set_id) {
+
+         if (brw->perfquery.n_oa_users != 0)
+            return false;
+         else
+            close_perf(brw);
+      }
+
       /* If the OA counters aren't already on, enable them. */
       if (brw->perfquery.oa_stream_fd == -1) {
          __DRIscreen *screen = brw->intelScreen->driScrnPriv;
@@ -1009,19 +1035,10 @@ brw_begin_perf_query(struct gl_context *ctx,
                                        ctx_id))
             return false;
       } else {
-         /* Opening an i915 perf stream implies exclusive access to
-          * the OA unit which will generate counter reports for a
-          * specific counter set with a specific layout/format so we
-          * can't begin any OA based queries that require a different
-          * counter set or format unless we get an opportunity to
-          * close the stream and open a new one...
-          */
-         if (brw->perfquery.current_oa_metrics_set_id !=
-             query->oa_metrics_set_id ||
-             brw->perfquery.current_oa_format != query->oa_format)
-         {
-            return false;
-         }
+         assert(brw->perfquery.current_oa_metrics_set_id ==
+                query->oa_metrics_set_id &&
+                brw->perfquery.current_oa_format ==
+                query->oa_format);
       }
 
       if (!inc_n_oa_users(brw)) {
@@ -1331,17 +1348,6 @@ brw_new_perf_query_object(struct gl_context *ctx, int query_index)
    return &obj->base;
 }
 
-static void
-close_perf(struct brw_context *brw)
-{
-   if (brw->perfquery.oa_stream_fd != -1) {
-      close(brw->perfquery.oa_stream_fd);
-      brw->perfquery.oa_stream_fd = -1;
-
-      free_sample_bufs(brw);
-   }
-}
-
 /**
  * Delete a performance query object.
  */
@@ -1385,8 +1391,14 @@ brw_delete_perf_query(struct gl_context *ctx,
 
    free(obj);
 
-   if (--brw->perfquery.n_query_instances == 0)
+   /* As an indication that the INTEL_performance_query extension is no
+    * longer in use, it's a good time to free our cache of sample
+    * buffers and close any current i915-perf stream.
+    */
+   if (--brw->perfquery.n_query_instances == 0) {
+      free_sample_bufs(brw);
       close_perf(brw);
+   }
 }
 
 /******************************************************************************/
