@@ -544,6 +544,14 @@ init_oa_sys_vars(struct brw_context *brw)
          ss_max = 3;
       } else if (brw->gen == 9) {
          s_max = 3;
+
+         /* XXX: beware that the kernel (as of writing) actually works as if
+          * ss_max == 4 since the HW register that reports the global subslice
+          * mask has 4 bits while in practice the limit is 3. It's also
+          * important that we initialize $SubsliceMask with 3 bits per slice
+          * since that's what the counter availability expressions in XML
+          * expect.
+          */
          ss_max = 3;
 
          /* NB: the timestamp frequency is different for Broxton */
@@ -575,10 +583,13 @@ init_oa_sys_vars(struct brw_context *brw)
       brw->perfquery.sys_vars.n_eu_slices = __builtin_popcount(slice_mask);
       brw->perfquery.sys_vars.slice_mask = slice_mask;
 
-      /* Note: some of the metrics we have (as described in XML)
-       * are conditional on a $SubsliceMask variable which is
-       * expected to also reflect the slice mask by packing
-       * together subslice masks for each slice in one value...
+      /* Note: the _SUBSLICE_MASK param only reports a global subslice mask
+       * which applies to all slices.
+       *
+       * Note: some of the metrics we have (as described in XML) are
+       * conditional on a $SubsliceMask variable which is expected to also
+       * reflect the slice mask by packing together subslice masks for each
+       * slice in one value..
        */
       for (s = 0; s < s_max; s++) {
          if (slice_mask & (1<<s)) {
