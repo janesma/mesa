@@ -523,7 +523,7 @@ brw_nir_lower_cs_shared(nir_shader *nir)
 
 nir_shader *
 brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
-                 bool is_scalar)
+                 bool run_gcm, bool is_scalar)
 {
    nir_variable_mode indirect_mask = 0;
    if (compiler->glsl_compiler_options[nir->stage].EmitNoIndirectInput)
@@ -570,6 +570,17 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
          OPT(nir_opt_loop_unroll, indirect_mask);
       }
       OPT(nir_opt_remove_phis);
+
+      /* We only want to run global code motion in the early stages of
+       * compilation.  In particular, we want to run it before we lower
+       * indirects away.  If we run GCM after indirect lowering, all of the
+       * loads stop being dependent on the loop and GCM pulls them out.  This
+       * can lead to massive register pressure problems for shaders with loops
+       * we can't unroll.
+       */
+      if (run_gcm)
+         OPT(nir_opt_gcm, true);
+
       OPT(nir_opt_undef);
       OPT(nir_lower_doubles, nir_lower_drcp |
                              nir_lower_dsqrt |
@@ -626,7 +637,7 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir)
 
    OPT(nir_split_var_copies);
 
-   nir = brw_nir_optimize(nir, compiler, is_scalar);
+   nir = brw_nir_optimize(nir, compiler, true, is_scalar);
 
    if (is_scalar) {
       OPT(nir_lower_load_const_to_scalar);
@@ -652,7 +663,7 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir)
                         nir_lower_divmod64);
 
    /* Get rid of split copies */
-   nir = brw_nir_optimize(nir, compiler, is_scalar);
+   nir = brw_nir_optimize(nir, compiler, false, is_scalar);
 
    OPT(nir_remove_dead_variables, nir_var_local);
 
@@ -676,13 +687,12 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
 
    UNUSED bool progress; /* Written by OPT */
 
-
    do {
       progress = false;
       OPT(nir_opt_algebraic_before_ffma);
    } while (progress);
 
-   nir = brw_nir_optimize(nir, compiler, is_scalar);
+   nir = brw_nir_optimize(nir, compiler, false, is_scalar);
 
    if (devinfo->gen >= 6) {
       /* Try and fuse multiply-adds */
@@ -776,7 +786,7 @@ brw_nir_apply_sampler_key(nir_shader *nir,
 
    if (nir_lower_tex(nir, &tex_options)) {
       nir_validate_shader(nir);
-      nir = brw_nir_optimize(nir, compiler, is_scalar);
+      nir = brw_nir_optimize(nir, compiler, false, is_scalar);
    }
 
    return nir;

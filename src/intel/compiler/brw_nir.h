@@ -151,6 +151,7 @@ bool brw_nir_opt_peephole_ffma(nir_shader *shader);
 
 nir_shader *brw_nir_optimize(nir_shader *nir,
                              const struct brw_compiler *compiler,
+                             bool run_gcm,
                              bool is_scalar);
 
 #define BRW_NIR_FRAG_OUTPUT_INDEX_SHIFT 0
