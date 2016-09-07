@@ -349,11 +349,8 @@ snapshot_statistics_registers(struct brw_context *brw,
                               struct brw_perf_query_object *obj,
                               uint32_t offset_in_bytes)
 {
-   const int offset = offset_in_bytes / sizeof(uint64_t);
    const struct brw_perf_query *query = obj->query;
    const int n_counters = query->n_counters;
-
-   brw_emit_mi_flush(brw);
 
    for (int i = 0; i < n_counters; i++) {
       const struct brw_perf_query_counter *counter = &query->counters[i];
@@ -362,7 +359,7 @@ snapshot_statistics_registers(struct brw_context *brw,
 
       brw_store_register_mem64(brw, obj->pipeline_stats.bo,
                                counter->pipeline_stat.reg,
-                               offset + i);
+                               offset_in_bytes + i * sizeof(uint64_t));
    }
 }
 
