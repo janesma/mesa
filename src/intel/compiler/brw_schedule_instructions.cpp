@@ -1722,13 +1722,7 @@ fs_visitor::schedule_instructions(instruction_scheduler_mode mode)
    if (mode != SCHEDULE_POST)
       calculate_live_intervals();
 
-   int grf_count;
-   if (mode == SCHEDULE_POST)
-      grf_count = grf_used;
-   else
-      grf_count = alloc.count;
-
-   fs_instruction_scheduler sched(this, grf_count, first_non_payload_grf,
+   fs_instruction_scheduler sched(this, alloc.count, first_non_payload_grf,
                                   cfg->num_blocks, mode);
    sched.run(cfg);
 
