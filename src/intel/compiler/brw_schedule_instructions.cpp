@@ -1716,6 +1716,18 @@ instruction_scheduler::run(cfg_t *cfg)
    cfg->cycle_count = get_cycle_count(cfg);
 }
 
+cfg_t *
+fs_visitor::cfg_clone(cfg_t *cfg) const
+{
+   exec_list instructions;
+
+   foreach_block_and_inst(block, fs_inst, inst, cfg) {
+      instructions.push_tail(new(mem_ctx) fs_inst(*inst));
+   }
+
+   return new(mem_ctx) cfg_t(&instructions);
+}
+
 void
 fs_visitor::schedule_instructions(instruction_scheduler_mode mode)
 {

@@ -162,6 +162,8 @@ public:
    bool opt_sampler_eot();
    bool virtual_grf_interferes(int a, int b);
    void schedule_instructions(instruction_scheduler_mode mode);
+   cfg_t *cfg_clone(cfg_t *cfg) const;
+
    void insert_gen4_send_dependency_workarounds();
    void insert_gen4_pre_send_dependency_workarounds(bblock_t *block,
                                                     fs_inst *inst);
