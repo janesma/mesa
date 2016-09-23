@@ -124,9 +124,9 @@ public:
    bool assign_regs(bool allow_spilling, bool spill_all);
    void assign_regs_trivial();
    void calculate_payload_ranges(int payload_node_count,
-                                 int *payload_last_use_ip);
+                                 int *payload_last_use_ip) const;
    void setup_payload_interference(struct ra_graph *g, int payload_reg_count,
-                                   int first_payload_node);
+                                   int first_payload_node) const;
    int choose_spill_reg(struct ra_graph *g);
    void spill_reg(int spill_reg);
    void split_virtual_grfs();
