@@ -7033,7 +7033,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
    } else if (likely(!(INTEL_DEBUG & DEBUG_NO8))) {
       simd8_cfg = v8.cfg;
       simd8_grf_start = v8.payload.num_regs;
-      simd8_grf_used = v8.grf_used;
+      simd8_grf_used = v8.alloc.count;
    }
 
    if (v8.max_dispatch_width >= 16 &&
@@ -7050,7 +7050,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
       } else {
          simd16_cfg = v16.cfg;
          simd16_grf_start = v16.payload.num_regs;
-         simd16_grf_used = v16.grf_used;
+         simd16_grf_used = v16.alloc.count;
       }
    }
 

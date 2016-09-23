@@ -888,7 +888,7 @@ namespace {
 bool
 fs_visitor::opt_bank_conflicts()
 {
-   assert(grf_used || !"Must be called after register allocation");
+   assert(alloc.count || !"Must be called after register allocation");
 
    /* No ternary instructions -- No bank conflicts. */
    if (devinfo->gen < 6)
@@ -923,7 +923,7 @@ fs_visitor::opt_bank_conflicts()
 unsigned
 fs_visitor::bank_conflict_cycles(const fs_inst *inst) const
 {
-   if (grf_used && inst->is_3src(devinfo) &&
+   if (alloc.count && inst->is_3src(devinfo) &&
        is_grf(inst->src[1]) && is_grf(inst->src[2]) &&
        bank_of(reg_of(inst->src[1])) == bank_of(reg_of(inst->src[2])) &&
        !is_conflict_optimized_out(devinfo, inst)) {

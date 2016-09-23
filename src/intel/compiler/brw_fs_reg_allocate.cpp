@@ -54,7 +54,7 @@ fs_visitor::assign_regs_trivial()
       hw_reg_mapping[i] = (hw_reg_mapping[i - 1] +
 			   this->alloc.sizes[i - 1]);
    }
-   this->grf_used = hw_reg_mapping[this->alloc.count];
+   unsigned grf_used = hw_reg_mapping[this->alloc.count];
 
    foreach_block_and_inst(block, fs_inst, inst, cfg) {
       assign_reg(hw_reg_mapping, &inst->dst);
@@ -63,13 +63,12 @@ fs_visitor::assign_regs_trivial()
       }
    }
 
-   if (this->grf_used >= max_grf) {
+   if (grf_used >= max_grf) {
       fail("Ran out of regs on trivial allocator (%d/%d)\n",
-	   this->grf_used, max_grf);
+	   grf_used, max_grf);
    } else {
-      this->alloc.count = this->grf_used;
+      this->alloc.count = grf_used;
    }
-
 }
 
 static void
@@ -686,13 +685,13 @@ fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
     * regs in the register classes back down to real hardware reg
     * numbers.
     */
-   this->grf_used = payload_node_count;
+   unsigned grf_used = payload_node_count;
    for (unsigned i = 0; i < this->alloc.count; i++) {
       int reg = ra_get_node_reg(g, i);
 
       hw_reg_mapping[i] = compiler->fs_reg_sets[rsi].ra_reg_to_grf[reg];
-      this->grf_used = MAX2(this->grf_used,
-			    hw_reg_mapping[i] + this->alloc.sizes[i]);
+      grf_used = MAX2(grf_used,
+		      hw_reg_mapping[i] + this->alloc.sizes[i]);
    }
 
    foreach_block_and_inst(block, fs_inst, inst, cfg) {
@@ -702,7 +701,7 @@ fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
       }
    }
 
-   this->alloc.count = this->grf_used;
+   this->alloc.count = grf_used;
 
    ralloc_free(g);
 

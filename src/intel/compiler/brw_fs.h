@@ -370,7 +370,6 @@ public:
    fs_reg control_data_bits;
    fs_reg invocation_id;
 
-   unsigned grf_used;
    bool spilled_any_registers;
 
    const unsigned dispatch_width; /**< 8, 16 or 32 */
