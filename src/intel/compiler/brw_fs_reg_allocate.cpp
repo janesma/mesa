@@ -316,7 +316,7 @@ count_to_loop_end(const bblock_t *block)
 }
 
 void fs_visitor::calculate_payload_ranges(int payload_node_count,
-                                          int *payload_last_use_ip)
+                                          int *payload_last_use_ip) const
 {
    int loop_depth = 0;
    int loop_end_ip = 0;
@@ -413,7 +413,7 @@ void fs_visitor::calculate_payload_ranges(int payload_node_count,
 void
 fs_visitor::setup_payload_interference(struct ra_graph *g,
                                        int payload_node_count,
-                                       int first_payload_node)
+                                       int first_payload_node) const
 {
    int payload_last_use_ip[payload_node_count];
    calculate_payload_ranges(payload_node_count, payload_last_use_ip);
@@ -465,7 +465,7 @@ fs_visitor::setup_payload_interference(struct ra_graph *g,
  * contents.
  */
 static void
-get_used_mrfs(fs_visitor *v, bool *mrf_used)
+get_used_mrfs(const fs_visitor *v, bool *mrf_used)
 {
    int reg_width = v->dispatch_width / 8;
 
@@ -497,7 +497,7 @@ get_used_mrfs(fs_visitor *v, bool *mrf_used)
  * messages (treated as MRFs in code generation).
  */
 static void
-setup_mrf_hack_interference(fs_visitor *v, struct ra_graph *g,
+setup_mrf_hack_interference(const fs_visitor *v, struct ra_graph *g,
                             int first_mrf_node, int *first_used_mrf)
 {
    bool mrf_used[BRW_MAX_MRF(v->devinfo->gen)];
