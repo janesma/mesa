@@ -496,8 +496,8 @@ drop_from_unresolved_query_list(struct brw_context *brw,
 static void
 init_oa_sys_vars(struct brw_context *brw)
 {
-   const struct brw_device_info *info = brw->intelScreen->devinfo;
-   __DRIscreen *screen = brw->intelScreen->driScrnPriv;
+   const struct gen_device_info *info = &brw->screen->devinfo;
+   __DRIscreen *screen = brw->screen->driScrnPriv;
    int threads_per_eu = 7;
 
    brw->perfquery.sys_vars.timestamp_frequency = 12500000;
@@ -1014,7 +1014,7 @@ brw_begin_perf_query(struct gl_context *ctx,
 
       /* If the OA counters aren't already on, enable them. */
       if (brw->perfquery.oa_stream_fd == -1) {
-         __DRIscreen *screen = brw->intelScreen->driScrnPriv;
+         __DRIscreen *screen = brw->screen->driScrnPriv;
          uint32_t ctx_id = drm_intel_gem_context_get_context_id(brw->hw_ctx);
          int period_exponent;
 
@@ -1546,7 +1546,7 @@ read_file_uint64(const char *file, uint64_t *val)
 static void
 enumerate_sysfs_metrics(struct brw_context *brw)
 {
-   __DRIscreen *screen = brw->intelScreen->driScrnPriv;
+   __DRIscreen *screen = brw->screen->driScrnPriv;
    struct stat sb;
    int min, maj;
    char buf[128];
