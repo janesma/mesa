@@ -7084,7 +7084,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
    brw_compute_flat_inputs(prog_data, shader);
 
    fs_generator g(compiler, log_data, mem_ctx, (void *) key, &prog_data->base,
-                  v8.promoted_constants, v8.runtime_check_aads_emit,
+                  v8.shader_stats, v8.runtime_check_aads_emit,
                   MESA_SHADER_FRAGMENT);
 
    if (unlikely(INTEL_DEBUG & DEBUG_WM)) {
@@ -7229,9 +7229,8 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
    assert(min_dispatch_width <= 32);
 
    fs_visitor *v8 = NULL, *v16 = NULL, *v32 = NULL;
-   cfg_t *cfg = NULL;
+   fs_visitor *v = NULL;
    const char *fail_msg = NULL;
-   unsigned promoted_constants = 0;
 
    /* Now the main event: Visit the shader IR and generate our CS IR for it.
     */
@@ -7247,10 +7246,9 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
          /* We should always be able to do SIMD32 for compute shaders */
          assert(v8->max_dispatch_width >= 32);
 
-         cfg = v8->cfg;
+         v = v8;
          cs_set_simd_size(prog_data, 8);
          cs_fill_push_const_info(compiler->devinfo, prog_data);
-         promoted_constants = v8->promoted_constants;
       }
    }
 
@@ -7269,7 +7267,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
          compiler->shader_perf_log(log_data,
                                    "SIMD16 shader failed to compile: %s",
                                    v16->fail_msg);
-         if (!cfg) {
+         if (!v) {
             fail_msg =
                "Couldn't generate SIMD16 program and not "
                "enough threads for SIMD8";
@@ -7278,10 +7276,9 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
          /* We should always be able to do SIMD32 for compute shaders */
          assert(v16->max_dispatch_width >= 32);
 
-         cfg = v16->cfg;
+         v = v16;
          cs_set_simd_size(prog_data, 16);
          cs_fill_push_const_info(compiler->devinfo, prog_data);
-         promoted_constants = v16->promoted_constants;
       }
    }
 
@@ -7304,27 +7301,27 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
          compiler->shader_perf_log(log_data,
                                    "SIMD32 shader failed to compile: %s",
                                    v16->fail_msg);
-         if (!cfg) {
+         if (!v) {
             fail_msg =
                "Couldn't generate SIMD32 program and not "
                "enough threads for SIMD16";
          }
       } else {
-         cfg = v32->cfg;
+         v = v32;
          cs_set_simd_size(prog_data, 32);
          cs_fill_push_const_info(compiler->devinfo, prog_data);
-         promoted_constants = v32->promoted_constants;
       }
    }
 
    const unsigned *ret = NULL;
-   if (unlikely(cfg == NULL)) {
+   if (unlikely(v == NULL)) {
       assert(fail_msg);
       if (error_str)
          *error_str = ralloc_strdup(mem_ctx, fail_msg);
    } else {
       fs_generator g(compiler, log_data, mem_ctx, (void*) key, &prog_data->base,
-                     promoted_constants, false, MESA_SHADER_COMPUTE);
+                     v->shader_stats, v->runtime_check_aads_emit,
+                     MESA_SHADER_COMPUTE);
       if (INTEL_DEBUG & DEBUG_CS) {
          char *name = ralloc_asprintf(mem_ctx, "%s compute shader %s",
                                       src_shader->info.label ?
@@ -7333,7 +7330,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
          g.enable_debug(name);
       }
 
-      g.generate_code(cfg, prog_data->simd_size);
+      g.generate_code(v->cfg, prog_data->simd_size);
 
       ret = g.get_assembly();
    }
