@@ -6285,19 +6285,26 @@ fs_visitor::fixup_3src_null_dest()
 void
 fs_visitor::allocate_registers(unsigned min_dispatch_width, bool allow_spilling)
 {
-   bool allocated_without_spills;
+   bool bu_allocated_without_spills;
+   bool td_allocated_without_spills;
    bool spill_all = allow_spilling && (INTEL_DEBUG & DEBUG_SPILL_FS);
 
    unsigned reg_pressure_threshold = 124;
    unsigned max_reg_pressure = 200;
    unsigned prev_max_reg_pressure;
 
-   this->shader_stats.scheduler_mode = "bottom-up";
+   unsigned bu_grf_used, td_grf_used;
+   unsigned orig_alloc_count = this->alloc.count;
+   cfg_t *orig_cfg = this->cfg;
+   cfg_t *td_cfg = cfg_clone(orig_cfg);
+   cfg_t *bu_cfg = cfg_clone(orig_cfg);
 
    /* The number of times we decreased the threshold and the actual register
     * pressure didn't decrease
     */
    unsigned num_missed = 0;
+   this->cfg = bu_cfg;
+   this->alloc.count = orig_alloc_count;
    do {
       prev_max_reg_pressure = max_reg_pressure;
       max_reg_pressure = schedule_instructions(reg_pressure_threshold,
@@ -6308,17 +6315,55 @@ fs_visitor::allocate_registers(unsigned min_dispatch_width, bool allow_spilling)
       else
          num_missed = 0;
 
-      if (0) {
-         assign_regs_trivial();
-         allocated_without_spills = true;
-      } else {
-         allocated_without_spills = assign_regs(false, spill_all);
-      }
+      bu_allocated_without_spills = assign_regs(false, spill_all);
+      bu_grf_used = this->alloc.count;
 
       reg_pressure_threshold -= 8;
-   } while(!allocated_without_spills && num_missed < 8);
+   } while (!bu_allocated_without_spills && num_missed < 8);
 
-   if (!allocated_without_spills) {
+   num_missed = 0;
+   max_reg_pressure = 200;
+   this->cfg = td_cfg;
+   this->alloc.count = orig_alloc_count;
+   do {
+      prev_max_reg_pressure = max_reg_pressure;
+      max_reg_pressure = td_schedule_instructions(reg_pressure_threshold,
+                                                  SCHEDULE_PRE);
+
+      if (max_reg_pressure >= prev_max_reg_pressure)
+         num_missed++;
+      else
+         num_missed = 0;
+
+      td_allocated_without_spills = assign_regs(false, spill_all);
+      td_grf_used = this->alloc.count;
+
+      reg_pressure_threshold -= 8;
+   } while (!td_allocated_without_spills && num_missed < 8);
+
+   if (bu_allocated_without_spills && td_allocated_without_spills) {
+      if (bu_cfg->cycle_count < td_cfg->cycle_count) {
+         this->cfg = bu_cfg;
+         this->alloc.count = bu_grf_used;
+         this->shader_stats.scheduler_mode = "bottom-up";
+      } else {
+         this->cfg = td_cfg;
+         this->alloc.count = td_grf_used;
+         this->shader_stats.scheduler_mode = "top-down";
+      }
+   } else if (bu_allocated_without_spills) {
+      this->cfg = bu_cfg;
+      this->alloc.count = bu_grf_used;
+      this->shader_stats.scheduler_mode = "bottom-up";
+   } else if (td_allocated_without_spills) {
+      this->cfg = td_cfg;
+      this->alloc.count = td_grf_used;
+      this->shader_stats.scheduler_mode = "top-down";
+   } else {
+      this->cfg = orig_cfg;
+      this->alloc.count = orig_alloc_count;
+      this->shader_stats.scheduler_mode = "unscheduled";
+
       if (!allow_spilling)
          fail("Failure to register allocate and spilling is not allowed.");
 
