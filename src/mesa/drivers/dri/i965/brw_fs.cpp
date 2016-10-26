@@ -3211,11 +3211,20 @@ fs_visitor::lower_uniform_pull_constant_loads()
          fs_reg payload, offset;
          if (devinfo->gen >= 9) {
             /* We have to use a message header on Skylake to get SIMD4x2
-             * mode.  Reserve space for the register.
-            */
-            offset = payload = fs_reg(VGRF, alloc.allocate(2));
-            offset.offset += REG_SIZE;
-            inst->mlen = 2;
+             * mode.  Reserve space for the register and initialize it.
+             */
+            const fs_builder ubld = fs_builder(this, block, inst).exec_all();
+
+            payload = ubld.vgrf(BRW_REGISTER_TYPE_UD, 2);
+
+            ubld.group(8, 0).MOV(payload,
+                                 retype(brw_vec8_grf(0, 0), BRW_REGISTER_TYPE_UD));
+            ubld.group(1, 0).MOV(component(payload, 2),
+                                 brw_imm_ud(GEN9_SAMPLER_SIMD_MODE_EXTENSION_SIMD4X2));
+
+            offset = byte_offset(payload, REG_SIZE);
+            inst->header_size = (devinfo->gen >= 9 ? 1 : 0);
+            inst->mlen = inst->header_size + 1;
          } else {
             offset = payload = fs_reg(VGRF, alloc.allocate(1));
             inst->mlen = 1;
