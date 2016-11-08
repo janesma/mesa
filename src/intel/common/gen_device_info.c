@@ -322,6 +322,14 @@ static const struct gen_device_info gen_device_info_chv = {
    }
 };
 
+/**
+ * From the Skylake PRM, 3DSTATE_PS::Scratch Space Base Pointer:
+ * "Scratch Space per slice is computed based on 4 sub-slices.  SW must
+ *  allocate scratch space enough so that each slice has 4 slices allowed."
+ *
+ * Based on this, we need to fudge max_wm_threads.
+ */
+
 #define GEN9_FEATURES                               \
    .gen = 9,                                        \
    .has_hiz_and_separate_stencil = true,            \
@@ -335,7 +343,10 @@ static const struct gen_device_info gen_device_info_chv = {
    .max_gs_threads = 336,                           \
    .max_tcs_threads = 336,                          \
    .max_tes_threads = 336,                          \
-   .max_wm_threads = 64 * 9,                        \
+   .max_wm_threads =                                \
+      64  /* threads/PSD */                         \
+     * 3  /* slices on GT4 */                       \
+     * 4, /* subslices per slice; see note above */ \
    .max_cs_threads = 56,                            \
    .urb = {                                         \
       .size = 384,                                  \
