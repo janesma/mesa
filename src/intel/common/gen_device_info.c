@@ -399,7 +399,7 @@ static const struct gen_device_info gen_device_info_bxt = {
    .max_tcs_threads = 112,
    .max_tes_threads = 112,
    .max_gs_threads = 112,
-   .max_wm_threads = 64 * 3,
+   .max_wm_threads = 64 * 4,
    .max_cs_threads = 6 * 6,
    .urb = {
       .size = 192,
@@ -422,7 +422,7 @@ static const struct gen_device_info gen_device_info_bxt_2x6 = {
    .max_tcs_threads = 56, /* XXX: guess */
    .max_tes_threads = 56,
    .max_gs_threads = 56,
-   .max_wm_threads = 64 * 2,
+   .max_wm_threads = 64 * 4,
    .max_cs_threads = 6 * 6,
    .urb = {
       .size = 128,
@@ -449,7 +449,7 @@ static const struct gen_device_info gen_device_info_kbl_gt1 = {
    .gt = 1,
 
    .max_cs_threads = 7 * 6,
-   .max_wm_threads = KBL_MAX_THREADS_PER_PSD * 2,
+   .max_wm_threads = KBL_MAX_THREADS_PER_PSD * 4,
    .urb.size = 192,
    .num_slices = 1,
 };
@@ -459,7 +459,7 @@ static const struct gen_device_info gen_device_info_kbl_gt1_5 = {
    .gt = 1,
 
    .max_cs_threads = 7 * 6,
-   .max_wm_threads = KBL_MAX_THREADS_PER_PSD * 3,
+   .max_wm_threads = KBL_MAX_THREADS_PER_PSD * 4,
    .num_slices = 1,
 };
 
@@ -467,7 +467,7 @@ static const struct gen_device_info gen_device_info_kbl_gt2 = {
    GEN9_FEATURES,
    .gt = 2,
 
-   .max_wm_threads = KBL_MAX_THREADS_PER_PSD * 3,
+   .max_wm_threads = KBL_MAX_THREADS_PER_PSD * 4,
    .num_slices = 1,
 };
 
@@ -475,7 +475,7 @@ static const struct gen_device_info gen_device_info_kbl_gt3 = {
    GEN9_FEATURES,
    .gt = 3,
 
-   .max_wm_threads = KBL_MAX_THREADS_PER_PSD * 6,
+   .max_wm_threads = KBL_MAX_THREADS_PER_PSD * 8,
    .num_slices = 2,
 };
 
@@ -483,7 +483,7 @@ static const struct gen_device_info gen_device_info_kbl_gt4 = {
    GEN9_FEATURES,
    .gt = 4,
 
-   .max_wm_threads = KBL_MAX_THREADS_PER_PSD * 9,
+   .max_wm_threads = KBL_MAX_THREADS_PER_PSD * 12,
    /*
     * From the "L3 Allocation and Programming" documentation:
     *
