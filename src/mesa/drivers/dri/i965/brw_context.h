@@ -1779,6 +1779,13 @@ bool brw_lower_texture_gradients(struct brw_context *brw,
 extern const char * const conditional_modifier[16];
 extern const char *const pred_ctrl_align16[16];
 
+static inline bool
+brw_depth_writes_enabled(const struct brw_context *brw)
+{
+   const struct gl_context *ctx = &brw->ctx;
+   return ctx->Depth.Test && ctx->Depth.Mask && ctx->Depth.Func != GL_EQUAL;
+}
+
 void
 brw_emit_depthbuffer(struct brw_context *brw);
 
