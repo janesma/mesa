@@ -2268,7 +2268,7 @@ gen7_block_read_scratch(struct brw_codegen *p,
 }
 
 /**
- * Read a float[4] vector from the data port constant cache.
+ * Read four float[4] vectors from the data port constant cache.
  * Location (in buffer) should be a multiple of 16.
  * Used for fetching shader constants.
  */
@@ -2290,7 +2290,7 @@ void brw_oword_block_read(struct brw_codegen *p,
    mrf = retype(mrf, BRW_REGISTER_TYPE_UD);
 
    brw_push_insn_state(p);
-   brw_set_default_exec_size(p, BRW_EXECUTE_8);
+   brw_set_default_exec_size(p, BRW_EXECUTE_16);
    brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
    brw_set_default_compression_control(p, BRW_COMPRESSION_NONE);
    brw_set_default_mask_control(p, BRW_MASK_DISABLE);
@@ -2320,12 +2320,12 @@ void brw_oword_block_read(struct brw_codegen *p,
    brw_set_dp_read_message(p,
 			   insn,
 			   bind_table_index,
-			   BRW_DATAPORT_OWORD_BLOCK_1_OWORDLOW,
+			   BRW_DATAPORT_OWORD_BLOCK_4_OWORDS,
 			   BRW_DATAPORT_READ_MESSAGE_OWORD_BLOCK_READ,
 			   target_cache,
 			   1, /* msg_length */
                            true, /* header_present */
-			   1); /* response_length (1 reg, 2 owords!) */
+			   2); /* response_length (2 regs, 4 owords!) */
 
    brw_pop_insn_state(p);
 }

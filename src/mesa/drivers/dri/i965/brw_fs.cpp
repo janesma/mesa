@@ -2111,25 +2111,24 @@ fs_visitor::lower_constant_loads()
          if (pull_index == -1)
 	    continue;
 
-         const unsigned index = stage_prog_data->binding_table.pull_constants_start;
-         fs_reg dst;
-
-         if (type_sz(inst->src[i].type) <= 4)
-            dst = vgrf(glsl_type::float_type);
-         else
-            dst = vgrf(glsl_type::double_type);
-
          assert(inst->src[i].stride == 0);
 
+         const unsigned index = stage_prog_data->binding_table.pull_constants_start;
+         const unsigned num_regs = 2; /* Fetch 4 owords at a time. */
+         const unsigned num_bytes = REG_SIZE * num_regs;
          const fs_builder ubld = ibld.exec_all().group(8, 0);
-         struct brw_reg offset = brw_imm_ud((unsigned)(pull_index * 4) & ~15);
+         const fs_reg dst = ubld.vgrf(BRW_REGISTER_TYPE_UD, num_regs);
+         const unsigned base = (pull_index * 4) & ~(num_bytes - 1);
+
          ubld.emit(FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD,
-                   dst, brw_imm_ud(index), offset);
+                   dst, brw_imm_ud(index), brw_imm_ud(base))
+            ->size_written = num_bytes;
 
          /* Rewrite the instruction to use the temporary VGRF. */
          inst->src[i].file = VGRF;
          inst->src[i].nr = dst.nr;
-         inst->src[i].offset = (pull_index & 3) * 4 + inst->src[i].offset % 4;
+         inst->src[i].offset = ((pull_index * 4) & (num_bytes - 1)) +
+                               inst->src[i].offset % 4;
 
          brw_mark_surface_used(prog_data, index);
       }

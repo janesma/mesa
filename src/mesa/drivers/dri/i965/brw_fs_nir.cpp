@@ -4052,20 +4052,24 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
           * and we have to split it if necessary.
           */
          const unsigned type_size = type_sz(dest.type);
-         const fs_reg packed_consts = bld.vgrf(BRW_REGISTER_TYPE_F);
+         const unsigned num_regs = 2; /* Fetch 4 owords at a time. */
+         const unsigned num_bytes = num_regs * REG_SIZE;
+         const fs_builder ubld = bld.exec_all().group(8, 0);
+         const fs_reg packed_consts = ubld.vgrf(BRW_REGISTER_TYPE_UD, num_regs);
+
          for (unsigned c = 0; c < instr->num_components;) {
             const unsigned base = const_offset->u32[0] + c * type_size;
-
-            /* Number of usable components in the next 16B-aligned load */
+            /* Number of usable components in the next num_bytes-aligned load. */
             const unsigned count = MIN2(instr->num_components - c,
-                                        (16 - base % 16) / type_size);
+                                        (num_bytes - base % num_bytes) / type_size);
 
-            bld.exec_all()
-               .emit(FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD,
-                     packed_consts, surf_index, brw_imm_ud(base & ~15));
+            ubld.emit(FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD,
+                      packed_consts, surf_index, brw_imm_ud(base & ~(num_bytes - 1)))
+               ->size_written = num_bytes;
 
             const fs_reg consts =
-               retype(byte_offset(packed_consts, base & 15), dest.type);
+               retype(byte_offset(packed_consts, base & (num_bytes - 1)),
+                      dest.type);
 
             for (unsigned d = 0; d < count; d++)
                bld.MOV(offset(dest, bld, c + d), component(consts, d));

@@ -1149,32 +1149,29 @@ fs_generator::generate_uniform_pull_constant_load_gen7(fs_inst *inst,
 {
    assert(index.type == BRW_REGISTER_TYPE_UD);
    assert(payload.file == BRW_GENERAL_REGISTER_FILE);
-   /* Make sure that the source width doesn't exceed the execution size of the
-    * instruction to avoid angering validate_reg().
-    */
-   payload = vec4(retype(payload, BRW_REGISTER_TYPE_UD));
-   dst = vec4(retype(dst, BRW_REGISTER_TYPE_UD));
+
+   payload = retype(payload, BRW_REGISTER_TYPE_UD);
+   dst = vec16(retype(dst, BRW_REGISTER_TYPE_UD));
 
    if (index.file == BRW_IMMEDIATE_VALUE) {
       const uint32_t surf_index = index.ud;
 
       brw_push_insn_state(p);
-      brw_set_default_compression_control(p, BRW_COMPRESSION_NONE);
       brw_set_default_mask_control(p, BRW_MASK_DISABLE);
       brw_inst *send = brw_next_insn(p, BRW_OPCODE_SEND);
-      brw_inst_set_exec_size(devinfo, send, BRW_EXECUTE_4);
+      brw_inst_set_exec_size(devinfo, send, BRW_EXECUTE_16);
       brw_pop_insn_state(p);
 
       brw_set_dest(p, send, dst);
       brw_set_src0(p, send, payload);
       brw_set_dp_read_message(p, send,
                               surf_index,
-                              BRW_DATAPORT_OWORD_BLOCK_1_OWORDLOW,
+                              BRW_DATAPORT_OWORD_BLOCK_4_OWORDS,
                               GEN7_DATAPORT_DC_OWORD_BLOCK_READ,
                               GEN6_SFID_DATAPORT_CONSTANT_CACHE,
                               1, /* mlen */
                               true, /* header */
-                              1); /* rlen */
+                              2); /* rlen */
 
    } else {
       struct brw_reg addr = vec1(retype(brw_address_reg(0), BRW_REGISTER_TYPE_UD));
@@ -1194,15 +1191,15 @@ fs_generator::generate_uniform_pull_constant_load_gen7(fs_inst *inst,
       brw_inst *insn = brw_send_indirect_message(
          p, GEN6_SFID_DATAPORT_CONSTANT_CACHE, dst,
          payload, addr);
-      brw_inst_set_exec_size(p->devinfo, insn, BRW_EXECUTE_4);
+      brw_inst_set_exec_size(p->devinfo, insn, BRW_EXECUTE_16);
       brw_set_dp_read_message(p, insn,
                               0, /* surface */
-                              BRW_DATAPORT_OWORD_BLOCK_1_OWORDLOW,
+                              BRW_DATAPORT_OWORD_BLOCK_4_OWORDS,
                               GEN7_DATAPORT_DC_OWORD_BLOCK_READ,
                               GEN6_SFID_DATAPORT_CONSTANT_CACHE,
                               1, /* mlen */
                               true, /* header */
-                              1); /* rlen */
+                              2); /* rlen */
 
       brw_pop_insn_state(p);
    }
