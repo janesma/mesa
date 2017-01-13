@@ -384,6 +384,7 @@ public:
    uint8_t group;
 
    bool eot:1;
+   bool last_rt:1;
    bool pi_noperspective:1;   /**< Pixel interpolator noperspective flag */
 };
 
