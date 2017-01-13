@@ -487,6 +487,19 @@ private:
    void *mem_ctx;
 };
 
+namespace brw {
+   inline fs_reg
+   fetch_payload_reg(const brw::fs_builder &bld, uint8_t reg,
+                     brw_reg_type type = BRW_REGISTER_TYPE_F, unsigned n = 1)
+   {
+      if (!reg) {
+         return fs_reg();
+      } else {
+         return fs_reg(retype(brw_vec8_grf(reg, 0), type));
+      }
+   }
+}
+
 bool brw_do_channel_expressions(struct exec_list *instructions);
 bool brw_do_vector_splitting(struct exec_list *instructions);
 
