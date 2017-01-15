@@ -205,6 +205,22 @@ isl_gen8_choose_image_alignment_el(const struct isl_device *dev,
       return;
    }
 
+   if (fmtl->txc == ISL_TXC_MCS) {
+      assert(tiling == ISL_TILING_Y0);
+
+      /*
+       * Broadwell PRM Vol 7, "MCS Buffer for Render Target(s)":
+       *
+       * Height, width, and layout of MCS buffer in this case must match with
+       * Render Target height, width, and layout. MCS buffer is tiledY. 
+       *
+       * To avoid wasting memory, choose the smallest alignment possible:
+       * HALIGN_4 and VALIGN_4.
+       */
+      *image_align_el = isl_extent3d(4, 4, 1);
+      return;
+   }
+
    /* The below text from the Broadwell PRM provides some insight into the
     * hardware's requirements for LOD alignment.  From the Broadwell PRM >>
     * Volume 5: Memory Views >> Surface Layout >> 2D Surfaces:

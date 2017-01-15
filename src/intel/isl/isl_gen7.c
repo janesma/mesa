@@ -442,6 +442,22 @@ isl_gen7_choose_image_alignment_el(const struct isl_device *dev,
       }
    }
 
+   if (fmtl->txc == ISL_TXC_MCS) {
+      assert(tiling == ISL_TILING_Y0);
+
+      /*
+       * IvyBrigde PRM Vol 2, Part 1, "11.7 MCS Buffer for Render Target(s)":
+       *
+       * Height, width, and layout of MCS buffer in this case must match with
+       * Render Target height, width, and layout. MCS buffer is tiledY.
+       *
+       * To avoid wasting memory, choose the smallest alignment possible:
+       * HALIGN_4 and VALIGN_4.
+       */
+      *image_align_el = isl_extent3d(4, 4, 1);
+      return;
+   }
+
    *image_align_el = (struct isl_extent3d) {
       .w = gen7_choose_halign_el(dev, info),
       .h = gen7_choose_valign_el(dev, info, tiling),
