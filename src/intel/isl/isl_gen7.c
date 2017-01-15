@@ -403,6 +403,45 @@ isl_gen7_choose_image_alignment_el(const struct isl_device *dev,
    /* IVB+ does not support combined depthstencil. */
    assert(!isl_surf_usage_is_depth_and_stencil(info->usage));
 
+   const struct isl_format_layout *fmtl = isl_format_get_layout(info->format);
+   if (fmtl->txc == ISL_TXC_CCS) {
+      assert(tiling == ISL_TILING_CCS);
+
+      /*
+       * IvyBrigde PRM Vol 2, Part 1, "11.7 MCS Buffer for Render Target(s)":
+       *
+       *  The following table describes the RT alignment 
+       *                        Pixels   Lines
+       *  TiledY RT CL
+       *  bpp
+       *  32                      8        4
+       *  64                      4        4
+       *  128                     2        4
+       */
+      switch (fmtl->format) {
+      case ISL_FORMAT_GEN7_CCS_32BPP_X:
+         *image_align_el = isl_extent3d(8, 4, 1);
+         return;
+      case ISL_FORMAT_GEN7_CCS_64BPP_X:
+         *image_align_el = isl_extent3d(4, 4, 1);
+         return;
+      case ISL_FORMAT_GEN7_CCS_128BPP_X:
+         *image_align_el = isl_extent3d(2, 4, 1);
+         return;
+      case ISL_FORMAT_GEN7_CCS_32BPP_Y:
+         *image_align_el = isl_extent3d(8, 4, 1);
+         return;
+      case ISL_FORMAT_GEN7_CCS_64BPP_Y:
+         *image_align_el = isl_extent3d(4, 4, 1);
+         return;
+      case ISL_FORMAT_GEN7_CCS_128BPP_Y:
+         *image_align_el = isl_extent3d(2, 4, 1);
+         return;
+      default:
+         unreachable("Invalid CCS format");
+      }
+   }
+
    *image_align_el = (struct isl_extent3d) {
       .w = gen7_choose_halign_el(dev, info),
       .h = gen7_choose_valign_el(dev, info, tiling),
