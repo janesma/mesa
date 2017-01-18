@@ -1015,7 +1015,8 @@ brw_begin_perf_query(struct gl_context *ctx,
       /* If the OA counters aren't already on, enable them. */
       if (brw->perfquery.oa_stream_fd == -1) {
          __DRIscreen *screen = brw->screen->driScrnPriv;
-         uint32_t ctx_id = drm_intel_gem_context_get_context_id(brw->hw_ctx);
+         uint32_t ctx_id;
+         int err = drm_intel_gem_context_get_id(brw->hw_ctx, &ctx_id);
          int period_exponent;
 
          /* The timestamp for HSW+ increments every 80ns
