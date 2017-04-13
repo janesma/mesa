@@ -126,6 +126,9 @@ brw_emit_sampler_state(struct brw_context *brw,
                SET_FIELD(wrap_t, BRW_SAMPLER_TCY_WRAP_MODE) |
                SET_FIELD(wrap_r, BRW_SAMPLER_TCZ_WRAP_MODE);
 
+      ss[3] |= SET_FIELD(GEN7_TRILINEAR_FILTER_QUALITY_LOW,
+                         GEN7_TRILINEAR_FILTER_QUALITY);
+
       if (non_normalized_coordinates)
          ss[3] |= GEN7_SAMPLER_NON_NORMALIZED_COORDINATES;
    } else {
