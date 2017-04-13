@@ -128,7 +128,8 @@ intelTexImage(struct gl_context * ctx,
    struct intel_texture_image *intelImage = intel_texture_image(texImage);
    bool ok;
 
-   bool tex_busy = intelImage->mt && brw_bo_busy(intelImage->mt->bo);
+   bool tex_busy = true;
+   //intelImage->mt && brw_bo_busy(intelImage->mt->bo);
 
    DBG("%s mesa_format %s target %s format %s type %s level %d %dx%dx%d\n",
        __func__, _mesa_get_format_name(texImage->TexFormat),

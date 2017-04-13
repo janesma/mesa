@@ -202,7 +202,7 @@ intelTexSubImage(struct gl_context * ctx,
    struct intel_mipmap_tree *mt = intel_texture_image(texImage)->mt;
    bool ok;
 
-   bool tex_busy = mt && brw_bo_busy(mt->bo);
+   bool tex_busy = true;//mt && brw_bo_busy(mt->bo);
 
    if (mt && mt->format == MESA_FORMAT_S_UINT8)
       mt->r8stencil_needs_update = true;
