@@ -673,6 +673,7 @@ private:
    ir_swizzle *matrix_elt(ir_variable *var, int col, int row);
 
    ir_expression *asin_expr(ir_variable *x, float p0, float p1);
+   void do_atan2(ir_factory &body, const glsl_type *type, ir_variable *res, operand tan);
    void do_atan(ir_factory &body, const glsl_type *type, ir_variable *res, operand y_over_x);
 
    /**
@@ -3630,6 +3631,35 @@ builtin_builder::_acos(const glsl_type *type)
    return sig;
 }
 
+/**
+ * approximate atan by evaluating the polynomial:
+ *
+ * x   * 0.9999793128310355 - x^3  * 0.3326756418091246 +
+ * x^5 * 0.1938924977115610 - x^7  * 0.1173503194786851 +
+ * x^9 * 0.0536813784310406 - x^11 * 0.0121323213173444
+ *
+ * This polynomial is reasonably accurate in the range [-1, 1]
+ */
+void
+builtin_builder::do_atan2(ir_factory &body, const glsl_type *type,
+                          ir_variable *res, operand tan)
+{
+   ir_variable *tmp = body.make_temp(type, "atan_tmp");
+   body.emit(assign(tmp, mul(tan, tan)));
+   body.emit(assign(res, mul(add(mul(sub(mul(add(mul(sub(mul(add(mul(imm(-0.0121323213173444f),
+                                                                     tmp),
+                                                                 imm(0.0536813784310406f)),
+                                                             tmp),
+                                                         imm(0.1173503194786851f)),
+                                                     tmp),
+                                                 imm(0.1938924977115610f)),
+                                             tmp),
+                                         imm(0.3326756418091246f)),
+                                     tmp),
+                                 imm(0.9999793128310355f)),
+                             tan)));
+}
+
 ir_function_signature *
 builtin_builder::_atan2(const glsl_type *type)
 {
@@ -3735,27 +3765,8 @@ builtin_builder::do_atan(ir_factory &body, const glsl_type *type, ir_variable *r
                            max2(abs(y_over_x),
                                 imm(1.0f)))));
 
-   /*
-    * approximate atan by evaluating polynomial:
-    *
-    * x   * 0.9999793128310355 - x^3  * 0.3326756418091246 +
-    * x^5 * 0.1938924977115610 - x^7  * 0.1173503194786851 +
-    * x^9 * 0.0536813784310406 - x^11 * 0.0121323213173444
-    */
    ir_variable *tmp = body.make_temp(type, "atan_tmp");
-   body.emit(assign(tmp, mul(x, x)));
-   body.emit(assign(tmp, mul(add(mul(sub(mul(add(mul(sub(mul(add(mul(imm(-0.0121323213173444f),
-                                                                     tmp),
-                                                                 imm(0.0536813784310406f)),
-                                                             tmp),
-                                                         imm(0.1173503194786851f)),
-                                                     tmp),
-                                                 imm(0.1938924977115610f)),
-                                             tmp),
-                                         imm(0.3326756418091246f)),
-                                     tmp),
-                                 imm(0.9999793128310355f)),
-                             x)));
+   do_atan2(body, type, tmp, x);
 
    /* range-reduction fixup */
    body.emit(assign(tmp, add(tmp,
