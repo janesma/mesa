@@ -3752,6 +3752,7 @@ builtin_builder::_atan2(const glsl_type *type)
 ir_function_signature *
 builtin_builder::_atan(const glsl_type *type)
 {
+   const unsigned n = type->vector_elements;
    ir_variable *y_over_x = in_var(type, "y_over_x");
    MAKE_SIG(type, always_available, 1, y_over_x);
 
@@ -3762,22 +3763,16 @@ builtin_builder::_atan(const glsl_type *type)
     * x = <
     *      \ 1.0 / y_over_x   otherwise
     */
+   ir_variable *reduced = body.make_temp(glsl_type::bvec(n), "reduced");
+   body.emit(assign(reduced, greater(abs(y_over_x), imm(1.0f, n))));
    ir_variable *x = body.make_temp(type, "atan_x");
-   body.emit(assign(x, div(min2(abs(y_over_x),
-                                imm(1.0f)),
-                           max2(abs(y_over_x),
-                                imm(1.0f)))));
+   body.emit(assign(x, csel(reduced, rcp(abs(y_over_x)), abs(y_over_x))));
 
    ir_variable *tmp = body.make_temp(type, "atan_tmp");
    do_atan(body, type, tmp, x);
 
    /* range-reduction fixup */
-   body.emit(assign(tmp, add(tmp,
-                             mul(b2f(greater(abs(y_over_x),
-                                          imm(1.0f, type->components()))),
-                                  add(mul(tmp,
-                                          imm(-2.0f)),
-                                      imm(M_PI_2f))))));
+   body.emit(assign(tmp, csel(reduced, sub(imm(M_PI_2f, n), tmp), tmp)));
 
    /* sign fixup */
    body.emit(ret(mul(tmp, sign(y_over_x))));
