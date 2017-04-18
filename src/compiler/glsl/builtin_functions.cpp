@@ -673,8 +673,7 @@ private:
    ir_swizzle *matrix_elt(ir_variable *var, int col, int row);
 
    ir_expression *asin_expr(ir_variable *x, float p0, float p1);
-   void do_atan2(ir_factory &body, const glsl_type *type, ir_variable *res, operand tan);
-   void do_atan(ir_factory &body, const glsl_type *type, ir_variable *res, operand y_over_x);
+   void do_atan(ir_factory &body, const glsl_type *type, ir_variable *res, operand tan);
 
    /**
     * Call function \param f with parameters specified as the linked
@@ -3641,8 +3640,8 @@ builtin_builder::_acos(const glsl_type *type)
  * This polynomial is reasonably accurate in the range [-1, 1]
  */
 void
-builtin_builder::do_atan2(ir_factory &body, const glsl_type *type,
-                          ir_variable *res, operand tan)
+builtin_builder::do_atan(ir_factory &body, const glsl_type *type,
+                         ir_variable *res, operand tan)
 {
    ir_variable *tmp = body.make_temp(type, "atan_tmp");
    body.emit(assign(tmp, mul(tan, tan)));
@@ -3725,7 +3724,7 @@ builtin_builder::_atan2(const glsl_type *type)
 
    /* Calculate the arctangent */
    ir_variable *arc = body.make_temp(type, "arc");
-   do_atan2(body, type, arc, tan);
+   do_atan(body, type, arc, tan);
 
    /* The arctangent calculation above is only correct in one octant of the
     * plane.  Fix it up so that it works everywhere.
@@ -3750,9 +3749,12 @@ builtin_builder::_atan2(const glsl_type *type)
    return sig;
 }
 
-void
-builtin_builder::do_atan(ir_factory &body, const glsl_type *type, ir_variable *res, operand y_over_x)
+ir_function_signature *
+builtin_builder::_atan(const glsl_type *type)
 {
+   ir_variable *y_over_x = in_var(type, "y_over_x");
+   MAKE_SIG(type, always_available, 1, y_over_x);
+
    /*
     * range-reduction, first step:
     *
@@ -3767,7 +3769,7 @@ builtin_builder::do_atan(ir_factory &body, const glsl_type *type, ir_variable *r
                                 imm(1.0f)))));
 
    ir_variable *tmp = body.make_temp(type, "atan_tmp");
-   do_atan2(body, type, tmp, x);
+   do_atan(body, type, tmp, x);
 
    /* range-reduction fixup */
    body.emit(assign(tmp, add(tmp,
@@ -3778,18 +3780,7 @@ builtin_builder::do_atan(ir_factory &body, const glsl_type *type, ir_variable *r
                                       imm(M_PI_2f))))));
 
    /* sign fixup */
-   body.emit(assign(res, mul(tmp, sign(y_over_x))));
-}
-
-ir_function_signature *
-builtin_builder::_atan(const glsl_type *type)
-{
-   ir_variable *y_over_x = in_var(type, "y_over_x");
-   MAKE_SIG(type, always_available, 1, y_over_x);
-
-   ir_variable *tmp = body.make_temp(type, "tmp");
-   do_atan(body, type, tmp, y_over_x);
-   body.emit(ret(tmp));
+   body.emit(ret(mul(tmp, sign(y_over_x))));
 
    return sig;
 }
