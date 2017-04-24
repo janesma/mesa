@@ -110,10 +110,10 @@ intel_batchbuffer_init(struct brw_context *brw)
    batch->validation_list =
       malloc(batch->exec_array_size * sizeof(batch->validation_list[0]));
 
-   if (INTEL_DEBUG & DEBUG_BATCH) {
+   /* if (INTEL_DEBUG & DEBUG_BATCH) { */
       batch->state_batch_sizes =
          _mesa_hash_table_create(NULL, uint_key_hash, uint_key_compare);
-   }
+   /* } */
 
    batch->use_batch_first =
       screen->kernel_features & KERNEL_ALLOWS_EXEC_BATCH_FIRST;
