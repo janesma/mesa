@@ -81,10 +81,10 @@ intel_batchbuffer_init(struct intel_batchbuffer *batch,
    batch->exec_objects =
       malloc(batch->exec_array_size * sizeof(batch->exec_objects[0]));
 
-   if (INTEL_DEBUG & DEBUG_BATCH) {
+   /* if (INTEL_DEBUG & DEBUG_BATCH) { */
       batch->state_batch_sizes =
          _mesa_hash_table_create(NULL, uint_key_hash, uint_key_compare);
-   }
+   /* } */
 }
 
 static void

@@ -39,7 +39,8 @@ extern "C" {
  * list of debugging flags, as well as some macros for handling them.
  */
 
-extern uint64_t INTEL_DEBUG;
+// extern uint64_t INTEL_DEBUG;
+extern uint64_t __attribute__((visibility ("default"))) INTEL_DEBUG;
 
 #define DEBUG_TEXTURE             (1ull <<  0)
 #define DEBUG_STATE               (1ull <<  1)
