@@ -69,7 +69,7 @@ static void
 dri3_update_num_back(struct loader_dri3_drawable *draw)
 {
    if (draw->flipping)
-      draw->num_back = 3;
+      draw->num_back = 4;
    else
       draw->num_back = 2;
 }
