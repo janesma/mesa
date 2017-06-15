@@ -1,0 +1,17 @@
+This directory contains a copy of the installed kernel headers
+required by the anv & i965 drivers to communicate with the kernel.
+Whenever either of those driver needs new definitions for new kernel
+APIs, these files should be updated.
+
+You can copy files installed after running this from the kernel
+repository, at version the drivers require :
+
+$ make headers_install INSTALL_HDR_PATH=/path/to/install
+
+The last update was done at the following kernel commit :
+
+commit cafd1e4df1e6e039268c4e4b1a55c88915d21f2e
+Author: Rodrigo Vivi <rodrigo.vivi@intel.com>
+Date:   Wed Jun 14 12:56:57 2017 -0700
+
+    drm-tip: 2017y-06m-14d-19h-56m-24s UTC integration manifest

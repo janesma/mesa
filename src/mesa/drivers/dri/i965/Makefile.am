@@ -38,9 +38,9 @@ AM_CFLAGS = \
 	-I$(top_srcdir)/src/compiler/nir \
 	-I$(top_builddir)/src/intel \
 	-I$(top_srcdir)/src/intel \
+	-I$(top_srcdir)/src/intel/drm \
 	$(DEFINES) \
 	$(VISIBILITY_CFLAGS) \
-	$(LIBDRM_CFLAGS) \
 	$(VALGRIND_CFLAGS)
 
 AM_CXXFLAGS = $(AM_CFLAGS)
