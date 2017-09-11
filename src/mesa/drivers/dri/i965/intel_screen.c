@@ -674,7 +674,7 @@ intel_create_image_common(__DRIscreen *dri_screen,
          /* Historically, X-tiled was the default, and so lack of modifier means
           * X-tiled.
           */
-         modifier = I915_FORMAT_MOD_X_TILED;
+         modifier = I915_FORMAT_MOD_Y_TILED;
       }
    }
 
@@ -2518,7 +2518,7 @@ intelAllocateBuffer(__DRIscreen *dri_screen,
                                            width,
                                            height,
                                            cpp,
-                                           I915_TILING_X, &pitch,
+                                           I915_TILING_Y, &pitch,
                                            BO_ALLOC_BUSY);
 
    if (intelBuffer->bo == NULL) {
