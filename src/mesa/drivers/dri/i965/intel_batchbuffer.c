@@ -49,7 +49,7 @@
  * should flush.  Each time we flush the batch, we recreate both buffers
  * at the original target size, so it doesn't grow without bound.
  */
-#define BATCH_SZ (16 * 1024)
+#define BATCH_SZ (20 * 1024)
 #define STATE_SZ (16 * 1024)
 
 /* The kernel assumes batchbuffers are smaller than 256kB. */
