@@ -1016,6 +1016,20 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
    return anv_GetInstanceProcAddr(instance, pName);
 }
 
+#ifdef ANV_EXPORT_GET_INSTANCE_PROC_ADDR
+/* The Vulkan CTS is capable of running without a loader so long as the
+ * libvulkan.so it finds exports vkGetInstanceProcAddr.  Expose it but only
+ * if see the right #define (which DOES NOT have a configure flag).
+ */
+PUBLIC
+VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(
+    VkInstance                                  instance,
+    const char*                                 pName)
+{
+   return anv_GetInstanceProcAddr(instance, pName);
+}
+#endif
+
 PFN_vkVoidFunction anv_GetDeviceProcAddr(
     VkDevice                                    _device,
     const char*                                 pName)
