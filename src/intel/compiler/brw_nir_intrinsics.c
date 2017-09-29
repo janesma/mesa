@@ -33,6 +33,7 @@ struct lower_intrinsics_state {
    nir_function_impl *impl;
    bool progress;
    nir_builder builder;
+   int thread_local_id_index;
 };
 
 static nir_ssa_def *
@@ -50,12 +51,13 @@ read_thread_local_id(struct lower_intrinsics_state *state)
    if (group_size <= 8)
       return nir_imm_int(b, 0);
 
-   if (state->cs_prog_data->thread_local_id_index == -1) {
-      state->cs_prog_data->thread_local_id_index = prog_data->nr_params;
-      brw_stage_prog_data_add_params(prog_data, 1);
+   if (state->thread_local_id_index == -1) {
+      state->thread_local_id_index = prog_data->nr_params;
+      uint32_t *param = brw_stage_prog_data_add_params(prog_data, 1);
+      *param = BRW_PARAM_BUILTIN_THREAD_LOCAL_ID;
       nir->num_uniforms += 4;
    }
-   unsigned id_index = state->cs_prog_data->thread_local_id_index;
+   unsigned id_index = state->thread_local_id_index;
 
    nir_intrinsic_instr *load =
       nir_intrinsic_instr_create(nir, nir_intrinsic_load_uniform);
@@ -171,7 +173,7 @@ brw_nir_lower_intrinsics(nir_shader *nir, struct brw_stage_prog_data *prog_data)
    state.nir = nir;
    state.prog_data = prog_data;
 
-   state.cs_prog_data->thread_local_id_index = -1;
+   state.thread_local_id_index = -1;
 
    do {
       state.progress = false;
