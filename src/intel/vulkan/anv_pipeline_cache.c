@@ -76,7 +76,6 @@ anv_shader_bin_create(struct anv_device *device,
    data += align_u32(prog_data_size, 8);
 
    assert(prog_data->nr_pull_params == 0);
-   assert(prog_data->nr_image_params == 0);
    new_prog_data->param = data;
    uint32_t param_size = prog_data->nr_params * sizeof(void *);
    memcpy(data, prog_data_param, param_size);
@@ -141,9 +140,8 @@ anv_shader_bin_write_data(const struct anv_shader_bin *shader, void *data)
  *
  * - Review prog_data struct for size and cacheability: struct
  *   brw_stage_prog_data has binding_table which uses a lot of uint32_t for 8
- *   bit quantities etc; param, pull_param, and image_params are pointers, we
- *   just need the compation map. use bit fields for all bools, eg
- *   dual_src_blend.
+ *   bit quantities etc; param and pull_param are pointers, we just need the
+ *   compation map. use bit fields for all bools, eg dual_src_blend.
  */
 
 static uint32_t
