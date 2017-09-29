@@ -88,8 +88,6 @@ brw_create_nir(struct brw_context *brw,
    }
    nir_validate_shader(nir);
 
-   (void)progress;
-
    nir = brw_preprocess_nir(brw->screen->compiler, nir);
 
    if (stage == MESA_SHADER_FRAGMENT) {
@@ -98,10 +96,13 @@ brw_create_nir(struct brw_context *brw,
          .fs_coord_pixel_center_integer = 1,
          .fs_coord_origin_upper_left = 1,
       };
-      _mesa_add_state_reference(prog->Parameters,
-                                (gl_state_index *) wpos_options.state_tokens);
 
+      progress = false;
       NIR_PASS(progress, nir, nir_lower_wpos_ytransform, &wpos_options);
+      if (progress) {
+         _mesa_add_state_reference(prog->Parameters,
+                                   (gl_state_index *) wpos_options.state_tokens);
+      }
    }
 
    NIR_PASS(progress, nir, nir_lower_system_values);
