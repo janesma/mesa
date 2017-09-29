@@ -33,12 +33,12 @@ struct lower_intrinsics_state {
    nir_function_impl *impl;
    bool progress;
    nir_builder builder;
-   bool cs_thread_id_used;
 };
 
 static nir_ssa_def *
 read_thread_local_id(struct lower_intrinsics_state *state)
 {
+   struct brw_stage_prog_data *prog_data = state->prog_data;
    nir_builder *b = &state->builder;
    nir_shader *nir = state->nir;
    const unsigned *sizes = nir->info.cs.local_size;
@@ -50,9 +50,12 @@ read_thread_local_id(struct lower_intrinsics_state *state)
    if (group_size <= 8)
       return nir_imm_int(b, 0);
 
-   assert(state->cs_prog_data->thread_local_id_index >= 0);
-   state->cs_thread_id_used = true;
-   const int id_index = state->cs_prog_data->thread_local_id_index;
+   if (state->cs_prog_data->thread_local_id_index == -1) {
+      state->cs_prog_data->thread_local_id_index = prog_data->nr_params;
+      brw_stage_prog_data_add_params(prog_data, 1);
+      nir->num_uniforms += 4;
+   }
+   unsigned id_index = state->cs_prog_data->thread_local_id_index;
 
    nir_intrinsic_instr *load =
       nir_intrinsic_instr_create(nir, nir_intrinsic_load_uniform);
@@ -168,6 +171,8 @@ brw_nir_lower_intrinsics(nir_shader *nir, struct brw_stage_prog_data *prog_data)
    state.nir = nir;
    state.prog_data = prog_data;
 
+   state.cs_prog_data->thread_local_id_index = -1;
+
    do {
       state.progress = false;
       nir_foreach_function(function, nir) {
@@ -178,9 +183,6 @@ brw_nir_lower_intrinsics(nir_shader *nir, struct brw_stage_prog_data *prog_data)
       }
       progress |= state.progress;
    } while (state.progress);
-
-   if (nir->stage == MESA_SHADER_COMPUTE && !state.cs_thread_id_used)
-      state.cs_prog_data->thread_local_id_index = -1;
 
    return progress;
 }
