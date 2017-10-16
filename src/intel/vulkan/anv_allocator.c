@@ -21,20 +21,17 @@
  * IN THE SOFTWARE.
  */
 
-#include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <limits.h>
 #include <assert.h>
-#include <linux/futex.h>
 #include <linux/memfd.h>
-#include <sys/time.h>
 #include <sys/mman.h>
-#include <sys/syscall.h>
 
 #include "anv_private.h"
 
 #include "util/hash_table.h"
+#include "util/simple_mtx.h"
 
 #ifdef HAVE_VALGRIND
 #define VG_NOACCESS_READ(__ptr) ({                       \
@@ -112,7 +109,6 @@ struct anv_mmap_cleanup {
 
 #define ANV_MMAP_CLEANUP_INIT ((struct anv_mmap_cleanup){0})
 
-<<<<<<< HEAD
 static inline long
 sys_futex(void *addr1, int op, int val1,
           struct timespec *timeout, void *addr2, int val3)
@@ -132,9 +128,7 @@ futex_wait(uint32_t *addr, int32_t value)
    return sys_futex(addr, FUTEX_WAIT, value, NULL, NULL, 0);
 }
 
-=======
 #ifndef HAVE_MEMFD_CREATE
->>>>>>> c1d88999899... anv: Check if memfd_create is already defined.
 static inline int
 memfd_create(const char *name, unsigned int flags)
 {
