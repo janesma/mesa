@@ -125,6 +125,13 @@ brw_upload_initial_gpu_state(struct brw_context *brw)
                 INSTPM_CONSTANT_BUFFER_ADDRESS_OFFSET_DISABLE);
       ADVANCE_BATCH();
    }
+
+   BEGIN_BATCH(4);
+   OUT_BATCH(_3DSTATE_DRAWING_RECTANGLE << 16 | (4 - 2));
+   OUT_BATCH(0); /* xmin, ymin */
+   OUT_BATCH(0xffffffff);
+   OUT_BATCH(0);
+   ADVANCE_BATCH();
 }
 
 static inline const struct brw_tracked_state *

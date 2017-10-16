@@ -287,6 +287,7 @@ static const struct brw_tracked_state genX(line_stipple) = {
 static void
 genX(upload_drawing_rect)(struct brw_context *brw)
 {
+   return;
    struct gl_context *ctx = &brw->ctx;
    const struct gl_framebuffer *fb = ctx->DrawBuffer;
    const unsigned int fb_width = _mesa_geometric_width(fb);

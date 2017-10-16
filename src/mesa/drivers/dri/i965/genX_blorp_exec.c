@@ -245,10 +245,12 @@ retry:
    gen8_write_pma_stall_bits(brw, 0);
 #endif
 
+/*
    blorp_emit(batch, GENX(3DSTATE_DRAWING_RECTANGLE), rect) {
       rect.ClippedDrawingRectangleXMax = MAX2(params->x1, params->x0) - 1;
       rect.ClippedDrawingRectangleYMax = MAX2(params->y1, params->y0) - 1;
    }
+*/
 
    blorp_exec(batch, params);
 
