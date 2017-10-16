@@ -93,6 +93,7 @@ static void
 brw_emit_pipe_control(struct brw_context *brw, uint32_t flags,
                       struct brw_bo *bo, uint32_t offset, uint64_t imm)
 {
+   return; // x.X
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
    if (devinfo->gen >= 8) {
