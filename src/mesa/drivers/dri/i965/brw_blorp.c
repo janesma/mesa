@@ -1273,6 +1273,7 @@ do_single_blorp_clear(struct brw_context *brw, struct gl_framebuffer *fb,
    } else {
       DBG("%s (slow) to mt %p level %d layer %d+%d\n", __FUNCTION__,
           irb->mt, irb->mt_level, irb->mt_layer, num_layers);
+      return;
 
       enum isl_aux_usage aux_usage =
          intel_miptree_render_aux_usage(brw, irb->mt, encode_srgb, false);
