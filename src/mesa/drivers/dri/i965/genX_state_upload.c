@@ -824,6 +824,14 @@ genX(emit_vertices)(struct brw_context *brw)
       }
    }
 #endif
+
+#if GEN_GEN >= 9
+   brw_batch_emit(brw, GENX(3DSTATE_VF_COMPONENT_PACKING), vfcp) {
+      for (int i = 0; i < 32; i++) {
+         vfcp.VertexElementEnables[i] = 0xf;
+      }
+   }
+#endif
 }
 
 static const struct brw_tracked_state genX(vertices) = {
@@ -877,6 +885,9 @@ genX(upload_cut_index)(struct brw_context *brw)
    const struct gl_context *ctx = &brw->ctx;
 
    brw_batch_emit(brw, GENX(3DSTATE_VF), vf) {
+#if GEN_GEN >= 9
+      vf.ComponentPackingEnable = true;
+#endif
       if (ctx->Array._PrimitiveRestart && brw->ib.ib) {
          vf.IndexedDrawCutIndexEnable = true;
          vf.CutIndex = _mesa_primitive_restart_index(ctx, brw->ib.index_size);
