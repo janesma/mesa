@@ -902,6 +902,11 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       break;
 
    case GL_INTERNALFORMAT_SUPPORTED:
+      /* Reject invalid texture buffer formats. */
+      if (target == GL_TEXTURE_BUFFER &&
+          _mesa_validate_texbuffer_format(ctx, internalformat) == MESA_FORMAT_NONE)
+         break;
+
       /* Having a supported <internalformat> is implemented as a prerequisite
        * for all the <pnames>. Thus,  if we reach this point, the internalformat is
        * supported.
