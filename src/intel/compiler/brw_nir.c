@@ -277,7 +277,7 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
                   nir_intrinsic_instr_create(nir, nir_intrinsic_load_input);
                load->src[0] = nir_src_for_ssa(nir_imm_int(&b, 0));
 
-               nir_intrinsic_set_base(load, num_inputs);
+               nir_intrinsic_set_base(load, num_inputs * 4);
                switch (intrin->intrinsic) {
                case nir_intrinsic_load_base_vertex:
                   nir_intrinsic_set_component(load, 0);
@@ -295,7 +295,7 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
                   /* gl_DrawID is stored right after gl_VertexID and friends
                    * if any of them exist.
                    */
-                  nir_intrinsic_set_base(load, num_inputs + has_sgvs);
+                  nir_intrinsic_set_base(load, (num_inputs + has_sgvs) * 4);
                   nir_intrinsic_set_component(load, 0);
                   break;
                default:
@@ -321,7 +321,7 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
                int attr = nir_intrinsic_base(intrin);
                int slot = _mesa_bitcount_64(nir->info.inputs_read &
                                             BITFIELD64_MASK(attr));
-               nir_intrinsic_set_base(intrin, slot);
+               nir_intrinsic_set_base(intrin, 4 * slot);
                break;
             }
 
