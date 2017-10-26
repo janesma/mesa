@@ -483,6 +483,9 @@ blorp_emit_vertex_elements(struct blorp_batch *batch,
       }
    }
 
+   blorp_emit(batch, GENX(3DSTATE_VF), vf) {
+   }
+
    blorp_emit(batch, GENX(3DSTATE_VF_TOPOLOGY), topo) {
       topo.PrimitiveTopologyType = _3DPRIM_RECTLIST;
    }
