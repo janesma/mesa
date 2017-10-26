@@ -211,18 +211,71 @@ remap_patch_urb_offsets(nir_block *block, nir_builder *b,
 
 void
 brw_nir_lower_vs_inputs(nir_shader *nir,
+                        const struct gen_device_info *devinfo,
+                        struct brw_vs_prog_data *prog_data,
                         bool use_legacy_snorm_formula,
                         const uint8_t *vs_attrib_wa_flags)
 {
+   struct {
+      unsigned base;
+      unsigned components;
+      bool valid;
+   } attrib[VERT_ATTRIB_MAX];
+
    fprintf(stderr, "In %s\n", __func__);
+
+   if (devinfo->gen >= 9) {
+      memset(attrib, 0, sizeof(attrib));
+   }
 
    /* Start with the location of the variable's base. */
    foreach_list_typed(nir_variable, var, node, &nir->inputs) {
       var->data.driver_location = var->data.location;
 
-      fprintf(stderr, "Input %s, type %s\n",
-              gl_vert_attrib_name(var->data.location),
-              glsl_get_type_name(var->type));
+      if (devinfo->gen >= 9) {
+         int offset = var->data.location;;
+
+         unsigned slots = glsl_count_attribute_slots(var->type, false);
+         unsigned components = glsl_get_component_slots(var->type);
+
+         if (glsl_type_is_matrix(var->type)) {
+            components = glsl_get_vector_elements(var->type);
+         }
+         if (glsl_type_is_64bit(glsl_without_array(var->type))) {
+            components = ALIGN(components, 4);
+         }
+
+         unsigned component_mask = components > 4 ? 0xf : (1 << components) - 1;
+
+         fprintf(stderr, "Input %s, type %s, slots %d, component mask %d\n",
+                 gl_vert_attrib_name(var->data.location),
+                 glsl_get_type_name(var->type),
+                 slots, component_mask);
+
+         for (int i = 0; i < slots; i++) {
+            attrib[offset + i].components = MIN2(components, 4);
+            attrib[offset + i].valid = true;
+         }
+      }
+   }
+
+   if (devinfo->gen >= 9) {
+      for (int i = 1; i < ARRAY_SIZE(attrib); i++) {
+         attrib[i].base += attrib[i - 1].base + attrib[i - 1].components;
+      }
+
+      int j = 0;
+      for (int i = 0; i < ARRAY_SIZE(attrib); i++) {
+         if (!attrib[i].valid)
+            continue;
+
+         unsigned component_mask = attrib[i].components > 4 ? 0xf : (1 << attrib[i].components) - 1;
+         prog_data->component_mask[j++] = component_mask;
+      }
+
+      for (; j < ARRAY_SIZE(prog_data->component_mask); j++) {
+         prog_data->component_mask[j] = 0xf;
+      }
    }
 
    /* Now use nir_lower_io to walk dereference chains.  Attribute arrays are
@@ -251,7 +304,8 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
        BITFIELD64_BIT(SYSTEM_VALUE_VERTEX_ID_ZERO_BASE) |
        BITFIELD64_BIT(SYSTEM_VALUE_INSTANCE_ID));
 
-   const unsigned num_inputs = _mesa_bitcount_64(nir->info.inputs_read);
+   const unsigned num_inputs = devinfo->gen >= 9 ?
+      attrib[VERT_ATTRIB_MAX - 1].base : 4 * _mesa_bitcount_64(nir->info.inputs_read);
 
    nir_foreach_function(function, nir) {
       if (!function->impl)
@@ -283,25 +337,30 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
                   nir_intrinsic_instr_create(nir, nir_intrinsic_load_input);
                load->src[0] = nir_src_for_ssa(nir_imm_int(&b, 0));
 
-               nir_intrinsic_set_base(load, num_inputs * 4);
+               nir_intrinsic_set_base(load, num_inputs);
                switch (intrin->intrinsic) {
                case nir_intrinsic_load_base_vertex:
+                  fprintf(stderr, "Input base vertex, base %u\n", num_inputs);
                   nir_intrinsic_set_component(load, 0);
                   break;
                case nir_intrinsic_load_base_instance:
+                  fprintf(stderr, "Input base instance, base %u\n", num_inputs);
                   nir_intrinsic_set_component(load, 1);
                   break;
                case nir_intrinsic_load_vertex_id_zero_base:
+                  fprintf(stderr, "Input vertex id, base %u\n", num_inputs);
                   nir_intrinsic_set_component(load, 2);
                   break;
                case nir_intrinsic_load_instance_id:
+                  fprintf(stderr, "Input instance id, base %u\n", num_inputs);
                   nir_intrinsic_set_component(load, 3);
                   break;
                case nir_intrinsic_load_draw_id:
                   /* gl_DrawID is stored right after gl_VertexID and friends
                    * if any of them exist.
                    */
-                  nir_intrinsic_set_base(load, (num_inputs + has_sgvs) * 4);
+                  fprintf(stderr, "Input draw id, base %u\n", num_inputs + has_sgvs * 4);
+                  nir_intrinsic_set_base(load, num_inputs + has_sgvs * 4);
                   nir_intrinsic_set_component(load, 0);
                   break;
                default:
@@ -319,17 +378,30 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
             }
 
             case nir_intrinsic_load_input: {
-               /* Attributes come in a contiguous block, ordered by their
-                * gl_vert_attrib value.  That means we can compute the slot
-                * number for an attribute by masking out the enabled attributes
-                * before it and counting the bits.
-                */
                int attr = nir_intrinsic_base(intrin);
-               int slot = _mesa_bitcount_64(nir->info.inputs_read &
-                                            BITFIELD64_MASK(attr));
-               nir_intrinsic_set_base(intrin, 4 * slot);
-               fprintf(stderr, "Input %s, base %d\n",
-                       gl_vert_attrib_name(attr), 4 * slot);
+               int base;
+
+               /* Attributes come in a contiguous block, ordered by their
+                * gl_vert_attrib value...
+                */
+               if (devinfo->gen >= 9) {
+                  /* ... That means we can compute the base number for an
+                   * attribute by counting the number of components in the
+                   * enabled attributes before it.
+                   */
+                  base = attrib[attr].base;
+               } else {
+                  /* ... That means we can compute the slot number for an
+                   * attribute by masking out the enabled attributes before it
+                   * and counting the bits.
+                   */
+                  int slot = _mesa_bitcount_64(nir->info.inputs_read &
+                                               BITFIELD64_MASK(attr));
+                  base = slot * 4; /* each slot is 4 components */
+               }
+
+               fprintf(stderr, "Input %s, base %d\n", gl_vert_attrib_name(attr), base);
+               nir_intrinsic_set_base(intrin, base);
                break;
             }
 

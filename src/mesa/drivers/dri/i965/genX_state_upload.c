@@ -828,7 +828,7 @@ genX(emit_vertices)(struct brw_context *brw)
 #if GEN_GEN >= 9
    brw_batch_emit(brw, GENX(3DSTATE_VF_COMPONENT_PACKING), vfcp) {
       for (int i = 0; i < 32; i++) {
-         vfcp.VertexElementEnables[i] = 0xf;
+         vfcp.VertexElementEnables[i] = vs_prog_data->component_mask[i];
       }
    }
 #endif
