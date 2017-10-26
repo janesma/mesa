@@ -886,7 +886,7 @@ genX(upload_cut_index)(struct brw_context *brw)
 
    brw_batch_emit(brw, GENX(3DSTATE_VF), vf) {
 #if GEN_GEN >= 9
-      vf.ComponentPackingEnable = true;
+      vf.ComponentPackingEnable = brw->vb.nr_enabled != 0;
 #endif
       if (ctx->Array._PrimitiveRestart && brw->ib.ib) {
          vf.IndexedDrawCutIndexEnable = true;
