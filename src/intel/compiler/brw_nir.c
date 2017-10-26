@@ -214,9 +214,15 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
                         bool use_legacy_snorm_formula,
                         const uint8_t *vs_attrib_wa_flags)
 {
+   fprintf(stderr, "In %s\n", __func__);
+
    /* Start with the location of the variable's base. */
    foreach_list_typed(nir_variable, var, node, &nir->inputs) {
       var->data.driver_location = var->data.location;
+
+      fprintf(stderr, "Input %s, type %s\n",
+              gl_vert_attrib_name(var->data.location),
+              glsl_get_type_name(var->type));
    }
 
    /* Now use nir_lower_io to walk dereference chains.  Attribute arrays are
@@ -322,6 +328,8 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
                int slot = _mesa_bitcount_64(nir->info.inputs_read &
                                             BITFIELD64_MASK(attr));
                nir_intrinsic_set_base(intrin, 4 * slot);
+               fprintf(stderr, "Input %s, base %d\n",
+                       gl_vert_attrib_name(attr), 4 * slot);
                break;
             }
 
