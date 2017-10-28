@@ -143,6 +143,12 @@ glsl_get_sampler_result_type(const struct glsl_type *type)
 }
 
 unsigned
+glsl_get_component_slots(const struct glsl_type *type)
+{
+   return type->component_slots();
+}
+
+unsigned
 glsl_get_record_location_offset(const struct glsl_type *type,
                                 unsigned length)
 {
