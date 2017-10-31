@@ -2079,6 +2079,11 @@ genX(upload_vs_state)(struct brw_context *brw)
 #endif
       INIT_THREAD_DISPATCH_FIELDS(vs, Vertex);
 
+#if GEN_GEN >= 9
+      vs.VertexURBEntryReadLength = vue_prog_data->urb_read_length;
+      fprintf(stderr, "Start reg: %d; Read length: %d\n", stage_prog_data->dispatch_grf_start_reg, vue_prog_data->urb_read_length);
+#endif
+
       vs.MaximumNumberofThreads = devinfo->max_vs_threads - 1;
 
 #if GEN_GEN < 6
