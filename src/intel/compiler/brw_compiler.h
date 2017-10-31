@@ -956,6 +956,8 @@ struct brw_vs_prog_data {
 
    unsigned nr_attribute_slots;
 
+   unsigned num_inputs;
+
    uint8_t component_mask[32]; /* For use by VF_COMPONENT_PACKING */
 
    bool uses_vertexid;

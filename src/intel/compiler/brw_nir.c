@@ -306,6 +306,7 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
 
    const unsigned num_inputs = devinfo->gen >= 9 ?
       attrib[VERT_ATTRIB_MAX - 1].base : 4 * _mesa_bitcount_64(nir->info.inputs_read);
+   prog_data->num_inputs = num_inputs;
 
    nir_foreach_function(function, nir) {
       if (!function->impl)
