@@ -178,7 +178,7 @@ intelInitExtensions(struct gl_context *ctx)
       ctx->Extensions.ARB_pipeline_statistics_query = true;
       ctx->Extensions.ARB_sample_shading = true;
       ctx->Extensions.ARB_shading_language_420pack = true;
-      if (ctx->API == API_OPENGL_CORE) {
+      if (ctx->API == API_OPENGL_COMPAT) {
          ctx->Extensions.ARB_texture_buffer_object = true;
          ctx->Extensions.ARB_texture_buffer_object_rgb32 = true;
          ctx->Extensions.ARB_texture_buffer_range = true;
