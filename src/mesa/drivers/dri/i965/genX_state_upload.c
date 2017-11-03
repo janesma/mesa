@@ -283,6 +283,7 @@ static const struct brw_tracked_state genX(line_stipple) = {
    .emit = genX(upload_line_stipple),
 };
 
+#if GEN_GEN < 8
 /* Constant single cliprect for framebuffer object or DRI2 drawing */
 static void
 genX(upload_drawing_rect)(struct brw_context *brw)
@@ -306,6 +307,7 @@ static const struct brw_tracked_state genX(drawing_rect) = {
    },
    .emit = genX(upload_drawing_rect),
 };
+#endif
 
 static uint32_t *
 genX(emit_vertex_buffer_state)(struct brw_context *brw,
@@ -5635,8 +5637,6 @@ genX(init_atoms)(struct brw_context *brw)
       &genX(polygon_stipple_offset),
 
       &genX(line_stipple),
-
-      &genX(drawing_rect),
 
       &genX(vf_topology),
 
