@@ -586,7 +586,7 @@ anv_block_pool_alloc_new(struct anv_block_pool *pool,
             futex_wake(&pool_state->end, INT_MAX);
          return state.next;
       } else {
-         futex_wait(&pool_state->end, state.end);
+         futex_wait(&pool_state->end, state.end, NULL);
          continue;
       }
    }
@@ -683,7 +683,7 @@ anv_fixed_size_state_pool_alloc_new(struct anv_fixed_size_state_pool *pool,
          futex_wake(&pool->block.end, INT_MAX);
       return offset;
    } else {
-      futex_wait(&pool->block.end, block.end);
+      futex_wait(&pool->block.end, block.end, NULL);
       goto restart;
    }
 }
