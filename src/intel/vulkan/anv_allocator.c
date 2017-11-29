@@ -112,6 +112,7 @@ struct anv_mmap_cleanup {
 
 #define ANV_MMAP_CLEANUP_INIT ((struct anv_mmap_cleanup){0})
 
+<<<<<<< HEAD
 static inline long
 sys_futex(void *addr1, int op, int val1,
           struct timespec *timeout, void *addr2, int val3)
@@ -131,11 +132,15 @@ futex_wait(uint32_t *addr, int32_t value)
    return sys_futex(addr, FUTEX_WAIT, value, NULL, NULL, 0);
 }
 
+=======
+#ifndef HAVE_MEMFD_CREATE
+>>>>>>> c1d88999899... anv: Check if memfd_create is already defined.
 static inline int
 memfd_create(const char *name, unsigned int flags)
 {
    return syscall(SYS_memfd_create, name, flags);
 }
+#endif
 
 static inline uint32_t
 ilog2_round_up(uint32_t value)
