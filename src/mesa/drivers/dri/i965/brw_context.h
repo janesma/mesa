@@ -474,6 +474,8 @@ struct brw_growing_bo {
    struct brw_bo *bo;
    uint32_t *map;
    uint32_t *cpu_map;
+   struct brw_bo *partial_bo;
+   unsigned partial_bytes;
 };
 
 struct intel_batchbuffer {
