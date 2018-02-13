@@ -975,6 +975,7 @@ struct gl_texture_image
 				 *   choosing TexEnv arithmetic.
 				 */
    mesa_format TexFormat:16;    /**< The actual texture memory format */
+   GLushort Level;                /**< Which mipmap level am I? */
 
    GLushort Width;		/**< = 2^WidthLog2 + 2*Border */
    GLushort Height;		/**< = 2^HeightLog2 + 2*Border */
@@ -989,7 +990,6 @@ struct gl_texture_image
    GLubyte MaxNumLevels;	/**< = maximum possible number of mipmap
                                        levels, computed from the dimensions */
 
-   GLubyte Level;                /**< Which mipmap level am I? */
    /** Cube map face: index into gl_texture_object::Image[] array */
    GLubyte Face;
 
