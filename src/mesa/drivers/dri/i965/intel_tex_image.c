@@ -447,6 +447,127 @@ intelTexSubImage(struct gl_context * ctx,
                     width, height, depth, format, type, pixels, packing);
 }
 
+/* On big-core gen9, non-sRGB ASTC blocks need sanitizing. Specifically, we
+ * must zero the UNORM16 fields of LDR void-extent blocks that are less than 4.
+ */
+static void *
+astc_wa_copy(void *dst, const void *src, size_t bytes)
+{
+   assert(!(((uintptr_t)dst) & 0xf));
+   assert(bytes % 16 == 0);
+
+   /* An ASTC block is stored in little-endian byte-order with the low 12 bits
+    * indicating if it is an LDR void-extent block.
+    */
+   struct astc_void_extent {
+      uint64_t header;
+      uint16_t r;
+      uint16_t g;
+      uint16_t b;
+      uint16_t a;
+   } *dst_block, *src_block;
+   dst_block = (struct astc_void_extent*) dst;
+   src_block = (struct astc_void_extent*) src;
+   STATIC_ASSERT(sizeof(struct astc_void_extent) == 16);
+
+   if (bytes) {
+      if ((src_block->header & 0xFFF) == 0xDFC) {
+         dst_block->header = src_block->header;
+         dst_block->r = src_block->r < 4 ? 0 : src_block->r;
+         dst_block->g = src_block->g < 4 ? 0 : src_block->g;
+         dst_block->b = src_block->b < 4 ? 0 : src_block->b;
+         dst_block->a = src_block->a < 4 ? 0 : src_block->a;
+      } else {
+         *dst_block = *src_block;
+      }
+   }
+
+   return dst;
+}
+
+static void
+intelCompressedTexSubImage(struct gl_context *ctx, GLuint dims,
+                           struct gl_texture_image *texImage,
+                           GLint xoffset, GLint yoffset, GLint zoffset,
+                           GLsizei width, GLsizei height, GLsizei depth,
+                           GLenum format,
+                           GLsizei imageSize, const GLvoid *data)
+{
+   const struct intel_mipmap_tree *mt = intel_texture_image(texImage)->mt;
+   if (mt->etc_format != MESA_FORMAT_NONE) {
+      /* Due to how mapping and unmapping works for this miptree, use the
+       * fall-back path.
+       */
+      _mesa_store_compressed_texsubimage(ctx, dims, texImage,
+                                         xoffset, yoffset, zoffset,
+                                         width, height, depth,
+                                         format, imageSize, data);
+      return;
+   }
+
+   /* Get pointers to the source and destination buffers. This involves mapping
+    * the source if it's in a PBO.
+    */
+   data = _mesa_validate_pbo_compressed_teximage(ctx, dims, imageSize, data,
+                                                 &ctx->Unpack,
+                                                 "glCompressedTexSubImage");
+   if (data == NULL && !_mesa_is_bufferobj(ctx->Unpack.BufferObj)) {
+      /* The user is just attempting to allocate space for this texture. */
+      return;
+   }
+
+   struct compressed_pixelstore store;
+   _mesa_compute_compressed_pixelstore(dims, texImage->TexFormat,
+                                       width, height, depth,
+                                       &ctx->Unpack, &store);
+   const char *src = (const char *)data + store.SkipBytes;
+   struct brw_context *brw = brw_context(ctx);
+   void *dst = safe_bo_map(brw, mt->bo, MAP_WRITE | MAP_RAW, __func__);
+   if (dst == NULL) {
+      _mesa_error(ctx, GL_OUT_OF_MEMORY, "glCompressedTexSubImage%uD", dims);
+      goto unmap_buffers;
+   }
+
+   /* Configure the upload function dependant on any workarounds. */
+   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   mem_copy_fn mem_copy = devinfo->gen == 9 &&
+         !gen_device_info_is_9lp(devinfo) &&
+         _mesa_is_astc_format(texImage->InternalFormat) &&
+         !_mesa_is_srgb_format(texImage->InternalFormat) ?
+         astc_wa_copy : memcpy;
+
+  /* In order to texture from ASTC, it must be stored Y-tiled. Other formats
+   * can be stored with other tilings, but we assume that linear is never
+   * chosen. Do the copy slice-by-slice, using linear_to_tiled().
+   */
+   assert(mt->surf.tiling != ISL_TILING_LINEAR);
+   assert(mt->aux_usage == ISL_AUX_USAGE_NONE);
+   unsigned bw, bh, bd;
+   _mesa_get_format_block_size_3d(mt->format, &bw, &bh, &bd);
+   for (unsigned slice = 0; slice < depth; slice += bd) {
+      unsigned x1_el, y1_el, x2_el, y2_el;
+      intel_texture_image_get_rect(texImage, xoffset, yoffset,
+                                   zoffset + slice, width, height,
+                                   &x1_el, &y1_el, &x2_el, &y2_el);
+      linear_to_tiled(
+         x1_el * mt->cpp, x2_el * mt->cpp,
+         y1_el, y2_el,
+         dst, src,
+         mt->surf.row_pitch, store.TotalBytesPerRow,
+         brw->has_swizzling,
+         mt->surf.tiling,
+         mem_copy
+      );
+
+      src += store.TotalBytesPerRow * store.TotalRowsPerSlice;
+   }
+
+unmap_buffers:
+   if (dst)
+      brw_bo_unmap(mt->bo);
+   _mesa_unmap_teximage_pbo(ctx, &ctx->Unpack);
+}
+
 static void
 intel_set_texture_image_mt(struct brw_context *brw,
                            struct gl_texture_image *image,
@@ -883,92 +1004,6 @@ intel_get_tex_sub_image(struct gl_context *ctx,
                              format, type, pixels, texImage);
 
    DBG("%s - DONE\n", __func__);
-}
-
-static void
-flush_astc_denorms(struct gl_context *ctx, GLuint dims,
-                   struct gl_texture_image *texImage,
-                   GLint xoffset, GLint yoffset, GLint zoffset,
-                   GLsizei width, GLsizei height, GLsizei depth)
-{
-   struct compressed_pixelstore store;
-   _mesa_compute_compressed_pixelstore(dims, texImage->TexFormat,
-                                       width, height, depth,
-                                       &ctx->Unpack, &store);
-
-   for (int slice = 0; slice < store.CopySlices; slice++) {
-
-      /* Map dest texture buffer */
-      GLubyte *dstMap;
-      GLint dstRowStride;
-      ctx->Driver.MapTextureImage(ctx, texImage, slice + zoffset,
-                                  xoffset, yoffset, width, height,
-                                  GL_MAP_READ_BIT | GL_MAP_WRITE_BIT,
-                                  &dstMap, &dstRowStride);
-      if (!dstMap)
-         continue;
-
-      for (int i = 0; i < store.CopyRowsPerSlice; i++) {
-
-         /* An ASTC block is stored in little endian mode. The byte that
-          * contains bits 0..7 is stored at the lower address in memory.
-          */
-         struct astc_void_extent {
-            uint16_t header : 12;
-            uint16_t dontcare[3];
-            uint16_t R;
-            uint16_t G;
-            uint16_t B;
-            uint16_t A;
-         } *blocks = (struct astc_void_extent*) dstMap;
-
-         /* Iterate over every copied block in the row */
-         for (int j = 0; j < store.CopyBytesPerRow / 16; j++) {
-
-            /* Check if the header matches that of an LDR void-extent block */
-            if (blocks[j].header == 0xDFC) {
-
-               /* Flush UNORM16 values that would be denormalized */
-               if (blocks[j].A < 4) blocks[j].A = 0;
-               if (blocks[j].B < 4) blocks[j].B = 0;
-               if (blocks[j].G < 4) blocks[j].G = 0;
-               if (blocks[j].R < 4) blocks[j].R = 0;
-            }
-         }
-
-         dstMap += dstRowStride;
-      }
-
-      ctx->Driver.UnmapTextureImage(ctx, texImage, slice + zoffset);
-   }
-}
-
-
-static void
-intelCompressedTexSubImage(struct gl_context *ctx, GLuint dims,
-                        struct gl_texture_image *texImage,
-                        GLint xoffset, GLint yoffset, GLint zoffset,
-                        GLsizei width, GLsizei height, GLsizei depth,
-                        GLenum format,
-                        GLsizei imageSize, const GLvoid *data)
-{
-   /* Upload the compressed data blocks */
-   _mesa_store_compressed_texsubimage(ctx, dims, texImage,
-                                      xoffset, yoffset, zoffset,
-                                      width, height, depth,
-                                      format, imageSize, data);
-
-   /* Fix up copied ASTC blocks if necessary */
-   GLenum gl_format = _mesa_compressed_format_to_glenum(ctx,
-                                                        texImage->TexFormat);
-   bool is_linear_astc = _mesa_is_astc_format(gl_format) &&
-                        !_mesa_is_srgb_format(gl_format);
-   struct brw_context *brw = (struct brw_context*) ctx;
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
-   if (devinfo->gen == 9 && !gen_device_info_is_9lp(devinfo) && is_linear_astc)
-      flush_astc_denorms(ctx, dims, texImage,
-                         xoffset, yoffset, zoffset,
-                         width, height, depth);
 }
 
 void
