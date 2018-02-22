@@ -331,12 +331,12 @@ intel_upload_tex(struct gl_context * ctx,
 
    if (_mesa_is_bufferobj(packing->BufferObj) || tex_busy ||
        mt->aux_usage == ISL_AUX_USAGE_CCS_E) {
-      ok = intel_texsubimage_blorp(brw, dims, texImage,
-                                   xoffset, yoffset, zoffset,
-                                   width, height, depth, format, type,
-                                   pixels, packing);
-      if (ok)
-         return;
+      /* ok = intel_texsubimage_blorp(brw, dims, texImage, */
+      /*                              xoffset, yoffset, zoffset, */
+      /*                              width, height, depth, format, type, */
+      /*                              pixels, packing); */
+      /* if (ok) */
+      /*    return; */
    }
 
    ok = intel_texsubimage_tiled_memcpy(ctx, dims, texImage,
