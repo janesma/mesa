@@ -151,6 +151,38 @@ intel_texsubimage_blorp(struct brw_context *brw, GLuint dims,
                                    pixels, packing);
 }
 
+/* When mapping a buffer object (bo), care must be taken to ensure that pending
+ * memory accesses are coherent with those that will occur through the map.
+ * This table defines the requirements:
+ *
+ *  BO Access | Synchronization Action Required
+ *  GPU | CPU
+ *   R     W    Flush so that the GPU doesn't read invalid data.
+ *   R     R    No-op.
+ *   W     W    Flush so that the CPU writes aren't overwritten.
+ *   W     R    Flush so that the CPU reads what GPU should've written.
+ *
+ * Since every texture bo may be writable by the GPU, and we don't know if the
+ * GPU is specifically reading or writing, we always flush if the buffer object
+ * is or will be busy.
+ */
+static void *
+safe_bo_map(struct brw_context *brw, struct brw_bo *bo, unsigned flags,
+            const char *caller)
+{
+   if (brw_batch_references(&brw->batch, bo) || brw_bo_busy(bo)) {
+      perf_debug("Flushing before mapping a referenced bo.\n");
+      intel_batchbuffer_flush(brw);
+   }
+
+   void *map = brw_bo_map(brw, bo, flags);
+
+   if (map == NULL)
+      DBG("%s: failed to map bo\n", caller);
+
+   return map;
+}
+
 /**
  * \brief A fast path for glTexImage and glTexSubImage.
  *
@@ -188,9 +220,6 @@ intel_texsubimage_tiled_memcpy(struct gl_context * ctx,
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    struct intel_texture_image *image = intel_texture_image(texImage);
    int src_pitch;
-
-   /* The miptree's buffer. */
-   struct brw_bo *bo;
 
    uint32_t cpp;
    mem_copy_fn mem_copy = NULL;
@@ -258,18 +287,9 @@ intel_texsubimage_tiled_memcpy(struct gl_context * ctx,
 
    intel_miptree_access_raw(brw, image->mt, level, 0, true);
 
-   bo = image->mt->bo;
-
-   if (brw_batch_references(&brw->batch, bo)) {
-      perf_debug("Flushing before mapping a referenced bo.\n");
-      intel_batchbuffer_flush(brw);
-   }
-
-   void *map = brw_bo_map(brw, bo, MAP_WRITE | MAP_RAW);
-   if (map == NULL) {
-      DBG("%s: failed to map bo\n", __func__);
+   void *map = safe_bo_map(brw, image->mt->bo, MAP_WRITE | MAP_RAW, __func__);
+   if (map == NULL)
       return false;
-   }
 
    src_pitch = _mesa_image_row_stride(packing, width, format, type);
 
@@ -301,7 +321,7 @@ intel_texsubimage_tiled_memcpy(struct gl_context * ctx,
       mem_copy
    );
 
-   brw_bo_unmap(bo);
+   brw_bo_unmap(image->mt->bo);
    return true;
 }
 
@@ -399,7 +419,6 @@ intelTexSubImage(struct gl_context * ctx,
    intel_upload_tex(ctx, dims, texImage, xoffset, yoffset, zoffset,
                     width, height, depth, format, type, pixels, packing);
 }
-
 
 static void
 intel_set_texture_image_mt(struct brw_context *brw,
@@ -769,16 +788,9 @@ intel_gettexsubimage_tiled_memcpy(struct gl_context *ctx,
 
    bo = image->mt->bo;
 
-   if (brw_batch_references(&brw->batch, bo)) {
-      perf_debug("Flushing before mapping a referenced bo.\n");
-      intel_batchbuffer_flush(brw);
-   }
-
-   void *map = brw_bo_map(brw, bo, MAP_READ | MAP_RAW);
-   if (map == NULL) {
-      DBG("%s: failed to map bo\n", __func__);
+   void *map = safe_bo_map(brw, bo, MAP_READ | MAP_RAW, __func__);
+   if (map == NULL)
       return false;
-   }
 
    dst_pitch = _mesa_image_row_stride(packing, width, format, type);
 
