@@ -211,6 +211,16 @@ intel_miptree_supports_ccs(struct brw_context *brw,
    if (!brw->mesa_format_supports_render[mt->format])
       return false;
 
+   /* Don't allocate a CCS buffer if the surface is emulating ETC. As a
+    * compressed texture, it isn't renderable from the API. In addition, this
+    * emulation occurs on older platforms that don't support sampling from CCS,
+    * so we don't try to compress it on upload.
+    */
+   if (mt->etc_format != MESA_FORMAT_NONE) {
+      assert(devinfo->gen < 9);
+      return false;
+   }
+
    return true;
 }
 
