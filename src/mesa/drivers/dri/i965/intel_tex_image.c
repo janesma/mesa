@@ -128,6 +128,34 @@ intel_miptree_create_for_teximage(struct brw_context *brw,
                                flags);
 }
 
+/* Given a logical rectangle into a gl_texture_image, return the physical
+ * rectangle on the underlying intel_miptree.
+ */
+static void
+intel_texture_image_get_rect(struct gl_texture_image *texImage,
+                             GLuint x_px, GLuint y_px, GLuint z_px,
+                             GLuint w_px, GLuint h_px,
+                             GLuint *x1_el, GLuint *y1_el,
+                             GLuint *x2_el, GLuint *y2_el)
+{
+   const struct intel_mipmap_tree *mt = intel_texture_image(texImage)->mt;
+   const unsigned base_level = texImage->Level + texImage->TexObject->MinLevel;
+   unsigned base_layer = texImage->TexObject->MinLayer;
+
+   if (texImage->TexObject->Target == GL_TEXTURE_CUBE_MAP)
+      base_layer += texImage->Face;
+
+   unsigned base_x_el, base_y_el;
+   intel_miptree_get_image_offset(mt, base_level, base_layer + z_px,
+                                  &base_x_el, &base_y_el);
+   unsigned bw, bh;
+   _mesa_get_format_block_size(mt->format, &bw, &bh);
+   *x1_el = base_x_el + x_px / bw;
+   *y1_el = base_y_el + y_px / bh;
+   *x2_el = *x1_el + DIV_ROUND_UP(w_px, bw);
+   *y2_el = *y1_el + DIV_ROUND_UP(h_px, bh);
+}
+
 static bool
 intel_texsubimage_blorp(struct brw_context *brw, GLuint dims,
                         struct gl_texture_image *tex_image,
@@ -304,15 +332,14 @@ intel_texsubimage_tiled_memcpy(struct gl_context * ctx,
        packing->Alignment, packing->RowLength, packing->SkipPixels,
        packing->SkipRows);
 
-   /* Adjust x and y offset based on miplevel */
-   unsigned level_x, level_y;
-   intel_miptree_get_image_offset(image->mt, level, 0, &level_x, &level_y);
-   xoffset += level_x;
-   yoffset += level_y;
-
+   /* Adjust rect based on miplevel */
+   unsigned x1_el, y1_el, x2_el, y2_el;
+   intel_texture_image_get_rect(texImage, xoffset, yoffset,
+                                zoffset, width, height,
+                                &x1_el, &y1_el, &x2_el, &y2_el);
    linear_to_tiled(
-      xoffset * cpp, (xoffset + width) * cpp,
-      yoffset, yoffset + height,
+      x1_el * cpp, x2_el * cpp,
+      y1_el, y2_el,
       map,
       pixels,
       image->mt->surf.row_pitch, src_pitch,
@@ -802,15 +829,14 @@ intel_gettexsubimage_tiled_memcpy(struct gl_context *ctx,
        packing->Alignment, packing->RowLength, packing->SkipPixels,
        packing->SkipRows);
 
-   /* Adjust x and y offset based on miplevel */
-   unsigned level_x, level_y;
-   intel_miptree_get_image_offset(image->mt, level, 0, &level_x, &level_y);
-   xoffset += level_x;
-   yoffset += level_y;
-
+   /* Adjust rect based on miplevel */
+   unsigned x1_el, y1_el, x2_el, y2_el;
+   intel_texture_image_get_rect(texImage, xoffset, yoffset,
+                                0, width, height,
+                                &x1_el, &y1_el, &x2_el, &y2_el);
    tiled_to_linear(
-      xoffset * cpp, (xoffset + width) * cpp,
-      yoffset, yoffset + height,
+      x1_el * cpp, x2_el * cpp,
+      y1_el, y2_el,
       pixels,
       map,
       dst_pitch, image->mt->surf.row_pitch,
