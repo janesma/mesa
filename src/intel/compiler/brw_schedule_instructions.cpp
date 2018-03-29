@@ -481,7 +481,7 @@ public:
 
    void run(cfg_t *cfg);
    void add_insts_from_block(bblock_t *block);
-   void compute_delays();
+   void compute_delay(schedule_node *node);
    void compute_exits();
    virtual void calculate_deps() = 0;
    virtual schedule_node *choose_instruction_to_schedule(int time) = 0;
@@ -821,18 +821,17 @@ instruction_scheduler::add_insts_from_block(bblock_t *block)
    }
 }
 
-/** Computation of the delay member of each node. */
+/** Recursive computation of the delay member of a node. */
 void
-instruction_scheduler::compute_delays()
+instruction_scheduler::compute_delay(schedule_node *n)
 {
-   foreach_in_list_reverse(schedule_node, n, &instructions) {
-      if (!n->child_count) {
-         n->delay = issue_time(n->inst);
-      } else {
-         for (int i = 0; i < n->child_count; i++) {
-            assert(n->children[i]->delay);
-            n->delay = MAX2(n->delay, n->latency + n->children[i]->delay);
-         }
+   if (!n->child_count) {
+      n->delay = issue_time(n->inst);
+   } else {
+      for (int i = 0; i < n->child_count; i++) {
+         if (!n->children[i]->delay)
+            compute_delay(n->children[i]);
+         n->delay = MAX2(n->delay, n->latency + n->children[i]->delay);
       }
    }
 }
@@ -1672,7 +1671,9 @@ instruction_scheduler::run(cfg_t *cfg)
 
       calculate_deps();
 
-      compute_delays();
+      foreach_in_list(schedule_node, n, &instructions) {
+         compute_delay(n);
+      }
       compute_exits();
 
       schedule_instructions(block);
