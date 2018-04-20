@@ -183,3 +183,4 @@ d77844a5290948a490ce6921c1623d1dd7af6c31 docs: fix 18.0 release note version
 
 # fixes: A specific backport of this commit was applied for this branch.
 4503ff760c794c3bb15b978a47c530037d56498e ac/nir: Add workaround for GFX9 buffer views.
+fedd0a4215bcd387525000d76b77993ca38916ae radv/winsys: allow to submit up to 4 IBs for chips without chaining
