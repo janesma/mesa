@@ -43,6 +43,24 @@ supports_type_conversion(const fs_inst *inst) {
    }
 }
 
+/* From the SKL PRM Vol 2a, "Move":
+ *
+ *    "A mov with the same source and destination type, no source modifier,
+ *    and no saturation is a raw move. A packed byte destination region (B
+ *    or UB type with HorzStride == 1 and ExecSize > 1) can only be written
+ *    using raw move."
+ */
+static bool
+is_byte_raw_mov (const fs_inst *inst)
+{
+   return type_sz(inst->dst.type) == 1 &&
+      inst->opcode == BRW_OPCODE_MOV &&
+      inst->src[0].type == inst->dst.type &&
+      !inst->saturate &&
+      !inst->src[0].negate &&
+      !inst->src[0].abs;
+}
+
 bool
 fs_visitor::lower_conversions()
 {
@@ -54,7 +72,8 @@ fs_visitor::lower_conversions()
       bool saturate = inst->saturate;
 
       if (supports_type_conversion(inst)) {
-         if (type_sz(inst->dst.type) < get_exec_type_size(inst)) {
+         if (type_sz(inst->dst.type) < get_exec_type_size(inst) &&
+             !is_byte_raw_mov(inst)) {
             /* From the Broadwell PRM, 3D Media GPGPU, "Double Precision Float to
              * Single Precision Float":
              *
