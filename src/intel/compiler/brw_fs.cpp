@@ -6404,10 +6404,12 @@ fs_visitor::allocate_registers(unsigned min_dispatch_width, bool allow_spilling)
 
    schedule_instructions(0, SCHEDULE_POST);
 
+#if 0
    if (stage != MESA_SHADER_COMPUTE &&
        dispatch_width == 16 && cfg->cycle_count > 2 * simd8_cycles) {
       fail("Failure to schedule SIMD16 advantageously");
    }
+#endif
 
    if (last_scratch > 0) {
       MAYBE_UNUSED unsigned max_scratch_size = 2 * 1024 * 1024;
