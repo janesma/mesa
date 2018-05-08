@@ -185,3 +185,4 @@ d77844a5290948a490ce6921c1623d1dd7af6c31 docs: fix 18.0 release note version
 4503ff760c794c3bb15b978a47c530037d56498e ac/nir: Add workaround for GFX9 buffer views.
 fedd0a4215bcd387525000d76b77993ca38916ae radv/winsys: allow to submit up to 4 IBs for chips without chaining
 aaab6242456a4a5e737da0add179704b0b6f3676 meson: don't build classic mesa tests without dri_drivers
+a9e4be9212868f619ac492aaf86b0aa68d4395c4 eg/compute: Drop reference to kernel_param bo in destructor
