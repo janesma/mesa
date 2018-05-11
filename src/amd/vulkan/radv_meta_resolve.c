@@ -352,6 +352,8 @@ static void radv_pick_resolve_method_images(struct radv_image *src_image,
 		*method = RESOLVE_COMPUTE;
 	else if (vk_format_is_int(src_image->vk_format))
 		*method = RESOLVE_COMPUTE;
+	else if (src_image->info.array_size > 1)
+		*method = RESOLVE_COMPUTE;
 
 	if (dest_image->surface.num_dcc_levels > 0) {
 		*method = RESOLVE_FRAGMENT;
