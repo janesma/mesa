@@ -188,3 +188,5 @@ aaab6242456a4a5e737da0add179704b0b6f3676 meson: don't build classic mesa tests w
 a9e4be9212868f619ac492aaf86b0aa68d4395c4 eg/compute: Drop reference to kernel_param bo in destructor
 901db25d5b7cd2ac2dd648b370c4bddf23dd5c44 glsl: change ast_type_qualifier bitset size to work around GCC 5.4 bug
 b16fc6cda11576a4dd6c8d95f7bee94121c4b8e7 radv/resolve: do fmask decompress on all layers.
+816f2dc67da72be8993e724aeda4c2ec2f5a2978 i965/miptree: Fix handling of uninitialized MCS buffers
+8a9491058da72ee2df75da25bb147010a451fb68 i965/miptree: Zero-initialize CCS_D buffers
