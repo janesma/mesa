@@ -557,7 +557,21 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
       OPT(nir_copy_prop);
       OPT(nir_opt_dce);
       OPT(nir_opt_cse);
+
+      /* Passing 0 to the peephole select pass causes it to convert
+       * if-statements that contain only move instructions in the branches
+       * regardless of the count.
+       *
+       * Passing 0 to the peephole select pass causes it to convert
+       * if-statements that contain at most a single ALU instruction (total)
+       * in both branches.  The select instruction works somewhat differently
+       * on Gen5 and earlier, and adding this pass on those platforms was
+       * found to be generally harmful.
+       */
       OPT(nir_opt_peephole_select, 0);
+      if (compiler->devinfo->gen >= 6)
+         OPT(nir_opt_peephole_select, 1);
+
       OPT(nir_opt_intrinsics);
       OPT(nir_opt_algebraic);
       OPT(nir_opt_constant_folding);
