@@ -772,6 +772,21 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
       OPT(brw_nir_opt_peephole_ffma);
    }
 
+   if (OPT(nir_opt_comparison_pre)) {
+      OPT(nir_copy_prop);
+      OPT(nir_opt_dce);
+      OPT(nir_opt_cse);
+
+      /* Do the select peepehole again.  nir_opt_comparison_pre (combined with
+       * the other optimization passes) will have removed at least one
+       * instruction from one of the branches of the if-statement, so now it
+       * might be under the threshold of conversion to bcsel.
+       */
+      OPT(nir_opt_peephole_select, 0);
+      if (devinfo->gen >= 6)
+         OPT(nir_opt_peephole_select, 1);
+   }
+
    OPT(nir_opt_algebraic_late);
 
    OPT(nir_lower_to_source_mods);
