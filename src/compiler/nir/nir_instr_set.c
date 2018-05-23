@@ -228,6 +228,110 @@ nir_srcs_equal(nir_src src1, nir_src src2)
    }
 }
 
+static struct nir_alu_instr *
+get_neg_instr(const nir_src *s)
+{
+   if (!s->is_ssa && s->parent_instr->type != nir_instr_type_alu)
+      return NULL;
+
+   struct nir_alu_instr *const alu = nir_instr_as_alu(s->parent_instr);
+
+   return alu->op == nir_op_fneg || alu->op == nir_op_ineg ? alu : NULL;
+}
+
+bool
+nir_alu_srcs_negative_equal(const nir_alu_instr *alu1,
+                            const nir_alu_instr *alu2,
+                            unsigned src1, unsigned src2)
+{
+   if (alu1->src[src1].abs != alu2->src[src2].abs)
+      return false;
+
+   bool parity = alu1->src[src1].negate != alu2->src[src2].negate;
+
+   /* Handling load_const instructions is tricky. */
+
+   const nir_const_value *const const1 =
+      nir_src_as_const_value(alu1->src[src1].src);
+
+   if (const1 != NULL) {
+      /* Assume that constant folding will eliminate source mods and unary
+       * ops.
+       */
+      if (parity)
+         return false;
+
+      const nir_const_value *const const2 =
+         nir_src_as_const_value(alu2->src[src2].src);
+
+      if (const2 == NULL)
+         return false;
+
+      const unsigned bits = alu1->dest.dest.ssa.bit_size;
+
+      switch (nir_op_infos[alu1->op].input_types[src1]) {
+      case nir_type_float:
+         if (bits == 32) {
+            for (unsigned i = 0; i < nir_ssa_alu_instr_src_components(alu1, src1); i++) {
+               if (const1->f32[i] != -const2->f32[i])
+                  return false;
+            }
+
+            return true;
+         }
+
+         break;
+
+      default:
+         break;
+      }
+
+      return false;
+   }
+
+   uint8_t alu1_swizzle[4] = {};
+   nir_src alu1_actual_src;
+   struct nir_alu_instr *const neg1 = get_neg_instr(&alu1->src[src1].src);
+
+   if (neg1) {
+      parity = !parity;
+      alu1_actual_src = neg1->src[0].src;
+
+      for (unsigned i = 0; i < nir_ssa_alu_instr_src_components(neg1, 0); i++)
+         alu1_swizzle[i] = neg1->src[0].swizzle[i];
+   } else {
+      alu1_actual_src = alu1->src[src1].src;
+
+      for (unsigned i = 0; i < nir_ssa_alu_instr_src_components(alu1, src1); i++)
+         alu1_swizzle[i] = i;
+   }
+
+   uint8_t alu2_swizzle[4] = {};
+   nir_src alu2_actual_src;
+   struct nir_alu_instr *const neg2 = get_neg_instr(&alu2->src[src2].src);
+
+   if (neg2) {
+      parity = !parity;
+      alu2_actual_src = neg2->src[0].src;
+
+      for (unsigned i = 0; i < nir_ssa_alu_instr_src_components(neg2, 0); i++)
+         alu2_swizzle[i] = neg2->src[0].swizzle[i];
+   } else {
+      alu2_actual_src = alu2->src[src2].src;
+
+      for (unsigned i = 0; i < nir_ssa_alu_instr_src_components(alu2, src2); i++)
+         alu2_swizzle[i] = i;
+   }
+
+   for (unsigned i = 0; i < nir_ssa_alu_instr_src_components(alu1, src1); i++) {
+      if (alu1_swizzle[alu1->src[src1].swizzle[i]] !=
+          alu2_swizzle[alu2->src[src2].swizzle[i]])
+         return false;
+   }
+
+   return parity && nir_srcs_equal(alu1_actual_src, alu2_actual_src);
+}
+
 bool
 nir_alu_srcs_equal(const nir_alu_instr *alu1, const nir_alu_instr *alu2,
                    unsigned src1, unsigned src2)
