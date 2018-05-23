@@ -2818,6 +2818,8 @@ bool nir_convert_from_ssa(nir_shader *shader, bool phi_webs_only);
 bool nir_lower_phis_to_regs_block(nir_block *block);
 bool nir_lower_ssa_defs_to_regs_block(nir_block *block);
 
+bool nir_opt_comparison_pre(nir_shader *shader);
+
 bool nir_opt_algebraic(nir_shader *shader);
 bool nir_opt_algebraic_before_ffma(nir_shader *shader);
 bool nir_opt_algebraic_late(nir_shader *shader);
