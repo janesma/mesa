@@ -191,3 +191,4 @@ b16fc6cda11576a4dd6c8d95f7bee94121c4b8e7 radv/resolve: do fmask decompress on al
 816f2dc67da72be8993e724aeda4c2ec2f5a2978 i965/miptree: Fix handling of uninitialized MCS buffers
 8a9491058da72ee2df75da25bb147010a451fb68 i965/miptree: Zero-initialize CCS_D buffers
 fe2edb25dd5628c395a65b60998f11e839d2b458 dri3: Stricter SBC wraparound handling
+ae514ca695a599cdd0b7c22f48fd4d721671b0cb intel/blorp: Support blits and clears on surfaces with offsets
