@@ -197,3 +197,5 @@ bd3e97e5aad7800b8e17ed10d34a070926691945 tegra: Remove usage of non-stable UAPI
 9e539012dfaa848fc4cfde83c3f3a83fee274ca4 tegra: Treat resources with modifiers as scanout
 381fac274054784e4cbd152168653aecb9f1e5dd intel/eu: Add some brw_get_default_ helpers
 44c614843c8785be57af06cc56208ad1497d05bc intel/blorp: Don't vertex fetch directly from clear values
+eeae4851494c16d2a6591550bfa6ef77d887ebe3 i965/screen: Refactor query_dma_buf_formats
+a26693493570a9d0f0fba1be617e01ee7bfff4db i965/screen: Return false for unsupported formats in query_modifiers
