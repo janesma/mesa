@@ -2806,6 +2806,7 @@ external_declaration:
    | declaration            { $$ = $1; }
    | pragma_statement       { $$ = NULL; }
    | layout_defaults        { $$ = $1; }
+   | ';'                    { $$ = NULL; }
    ;
 
 function_definition:
