@@ -201,3 +201,4 @@ eeae4851494c16d2a6591550bfa6ef77d887ebe3 i965/screen: Refactor query_dma_buf_for
 a26693493570a9d0f0fba1be617e01ee7bfff4db i965/screen: Return false for unsupported formats in query_modifiers
 03c370d2f164847abad88c1af7c159db23014947 radeonsi: fix possible truncation on renderer string
 135e4d434f622fa1d7275bdb72f859e1c1b1976e radv: add a workaround for DXVK hangs by setting amdgpu-skip-threshold
+68dead112e710b261ad33604175d635dec6afd34 radv: update the ZRANGE_PRECISION value for the TC-compat bug
