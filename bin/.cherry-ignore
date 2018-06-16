@@ -204,3 +204,4 @@ a26693493570a9d0f0fba1be617e01ee7bfff4db i965/screen: Return false for unsupport
 68dead112e710b261ad33604175d635dec6afd34 radv: update the ZRANGE_PRECISION value for the TC-compat bug
 4cfc4cef80a85dea2b761efd9f6deb13198c9196 meson: fix private libs when building without glx
 efae1279936112cefe9fa1753998993df81d6201 util/bitset: include util/macro.h
+5917761e3dddc968d5ccac9b282b7cb8d3da866f radv: fix emitting the TCS regs on GFX9
