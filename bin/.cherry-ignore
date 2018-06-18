@@ -88,3 +88,13 @@ a7d0c53ab89ca86b705014925214101f5bc4187f st/mesa: fix assertion failures with GL
 
 # stable: Explicit 18.1 only nomination
 30918b77ac82ba1da7764c0375233656e0ebf9f9 nv30: ensure that displayable formats are marked accordingly
+44c614843c8785be57af06cc56208ad1497d05bc intel/blorp: Don't vertex fetch directly from clear values
+778e2881a04817e8c10c7a400bf1e37414420194 intel/isl: Add bounds-checking assertions in isl_format_get_layout
+eeae4851494c16d2a6591550bfa6ef77d887ebe3 i965/screen: Refactor query_dma_buf_formats
+a26693493570a9d0f0fba1be617e01ee7bfff4db i965/screen: Return false for unsupported formats in query_modifiers
+8f2421d73be596c12019196189255f22fd3edb54 meson: work around gentoo applying -m32 to host compiler in cross builds
+135e4d434f622fa1d7275bdb72f859e1c1b1976e radv: add a workaround for DXVK hangs by setting amdgpu-skip-threshold
+e266b320590ebbeadf7c98b0b493d89886534ccb mesa/program_binary: add implicit UseProgram after successful ProgramBinary
+efae1279936112cefe9fa1753998993df81d6201 util/bitset: include util/macro.h
+5917761e3dddc968d5ccac9b282b7cb8d3da866f radv: fix emitting the TCS regs on GFX9
+e8eb84826e30ffcb54f69a7aec9181f969418eb2 meson: fix i965/anv/isl genX static lib names
