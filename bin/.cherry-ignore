@@ -45,3 +45,4 @@ a2f5292c82ad07731d633b36a663e46adc181db9
 # broken"
 #
 11712b9ca17e4e1a819dcb7d020e19c6da77bc90
+c2942141ae69e0a9040139dfddefcaf7f211c75b clover: Don't extend illegal integer types.
